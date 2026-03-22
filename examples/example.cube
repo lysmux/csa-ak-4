@@ -1,0 +1,16 @@
+const a = 1
+var b = 2
+
+b = a + b
+b = a - b
+b = a * b
+b = a / b
+
+if (a > b) {
+    print()
+} else if () {}
+} else {}
+
+while (expr) {}
+
+fun main()
