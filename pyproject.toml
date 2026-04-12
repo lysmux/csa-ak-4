@@ -5,7 +5,10 @@ description = "CSA 4 lab"
 authors = [{ name = "lysmux", email = "lysmux <kllraz@yandex.ru>" }]
 requires-python = ">=3.12"
 readme = "README.md"
-dependencies = []
+dependencies = [
+    "click>=8.3.2",
+    "textual>=8.2.4",
+]
 
 [dependency-groups]
 dev = [

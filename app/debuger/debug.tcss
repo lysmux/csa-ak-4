@@ -1,0 +1,55 @@
+#main {
+    width: 100%;
+    height: 100%;
+}
+
+#left-panel {
+    width: 2fr;
+}
+
+#right-panel {
+    width: 1fr;
+}
+
+OpcodeView {
+    height: auto;
+    min-height: 3;
+    border: solid $accent;
+    padding: 1 2;
+}
+
+SignalsView {
+    height: auto;
+    min-height: 3;
+    border: solid $accent;
+    padding: 1 2;
+}
+
+StatusView {
+    height: auto;
+    border: solid $accent;
+    padding: 1 2;
+}
+
+RegistersView {
+    height: auto;
+    border: solid $accent;
+    padding: 1 2;
+}
+
+StackView {
+    height: 1fr;
+    border: solid $accent;
+}
+
+.stack-title {
+    text-align: center;
+    background: $accent;
+    color: $background;
+    padding: 0 1;
+}
+
+ListView {
+    height: 1fr;
+    padding: 0;
+}
