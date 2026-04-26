@@ -1,3 +1,5 @@
+[![CI](https://github.com/lysmux/csa-ak-4/actions/workflows/ci.yaml/badge.svg)](https://github.com/lysmux/csa-ak-4/actions/workflows/ci.yaml)
+
 # Вариант
 alg | stack | harv | hw | tick | binary | trap | mem | cstr | prob1 | superscalar
 
