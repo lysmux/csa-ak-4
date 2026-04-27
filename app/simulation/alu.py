@@ -27,15 +27,6 @@ def _trunc_div(a: int, b: int) -> int:
     return q
 
 
-def _nz(value: int) -> Flags:
-    flags = Flags(0)
-    if value == 0:
-        flags |= Flags.Z
-    if value & SIGN_BIT:
-        flags |= Flags.N
-    return flags
-
-
 class Alu:
     BINARY_OPERATIONS: dict[Opcode, BinaryOp] = {
         Opcode.ADD: lambda a, b: a + b,
@@ -91,7 +82,7 @@ class Alu:
 
     @staticmethod
     def _flags_binary(opcode: Opcode, a: int, b: int, value: int) -> Flags:
-        flags = _nz(value)
+        flags = Flags.nz(value)
 
         if opcode == Opcode.ADD:
             if a + b > WORD_MASK:
@@ -115,7 +106,7 @@ class Alu:
 
     @staticmethod
     def _flags_unary(opcode: Opcode, a: int, value: int) -> Flags:
-        flags = _nz(value)
+        flags = Flags.nz(value)
 
         if opcode == Opcode.INC:
             if a == WORD_MASK:
