@@ -76,6 +76,7 @@ exclude_also = [
 [tool.pytest.ini_options]
 addopts = "--strict-markers --showlocals --verbosity 2"
 log_level = "INFO"
+pythonpath = ["."]
 
 
 [tool.pyright]
