@@ -3,14 +3,14 @@ import pytest
 from app.translator.lexer import Lexer
 from app.translator.nodes import (
     AssignStmt, BinaryOp, Block, Bool, Call, ConstDecl,
-    ExprStmt, FunDecl, Ident, IfStmt, Number, PostfixOp,
+    FunDecl, Ident, IfStmt, Number, PostfixOp,
     Program, String, UnaryOp, VarDecl, WhileStmt,
 )
 from app.translator.parser import ParseError, Parser
 
 
 def parse(source: str) -> Program:
-    tokens = Lexer().tokenize(source)
+    tokens = Lexer(source).tokenize()
     return Parser(tokens).parse()
 
 
@@ -40,7 +40,7 @@ def test_var_decl():
 
 def test_const_decl_string_value():
     assert stmt('const msg: string = "hi";') == ConstDecl(
-        name="msg", type_name="string", value=String('"hi"')
+        name="msg", type_name="string", value=String('hi')
     )
 
 
@@ -74,7 +74,7 @@ def test_number():
 
 
 def test_string():
-    assert expr('"hello"') == String('"hello"')
+    assert expr('"hello"') == String('hello')
 
 
 def test_true():
@@ -221,7 +221,7 @@ def test_call_no_args():
 
 
 def test_call_one_arg():
-    assert expr('print("hi")') == Call("print", [String('"hi"')])
+    assert expr('print("hi")') == Call("print", [String('hi')])
 
 
 def test_call_multiple_args():
