@@ -1,0 +1,41 @@
+from collections.abc import Callable
+
+import pytest
+
+from app.isa.instruction import Instruction
+from app.simulation.control_unit import CUSnapshot, ControlUnit
+from app.simulation.data_path import DataPath
+from app.simulation.memory import Memory
+from app.simulation.stack import Stack
+
+
+def run_simulation(
+        instructions: list[Instruction],
+        initial_memory: dict[int, int],
+) -> CUSnapshot:
+    instr_memory = Memory(50)
+    instr_memory.fill([instr.to_binary() for instr in instructions])
+
+    return_stack = Stack(50)
+
+    data_memory = Memory(50)
+    for addr, value in initial_memory.items():
+        data_memory._memory[addr] = value
+
+    data_stack = Stack(50)
+    data_path = DataPath(
+        memory=data_memory,
+        stack=data_stack,
+    )
+
+    cu = ControlUnit(
+        data_path=data_path,
+        instr_memory=instr_memory,
+        return_stack=return_stack,
+    )
+
+    cu.run()
+
+    return cu.snapshot
+
+type SimulationTest = Callable[[list[Instruction], dict[int, int]], CUSnapshot]

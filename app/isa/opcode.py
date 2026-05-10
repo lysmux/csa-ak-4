@@ -39,12 +39,16 @@ class Opcode(IntEnum):
     # --- Условные переходы ---
     JZ = 0x50
     JNZ = 0x51
-    JGE = 0x52
-    JL = 0x53
-    JG = 0x54
-    JLE = 0x55
-    JC = 0x56
-    JNC = 0x57
+    JPL = 0x52
+    JMI = 0x53
+    JGE = 0x54
+    JL = 0x55
+    JG = 0x56
+    JLE = 0x57
+    JC = 0x58
+    JNC = 0x59
+    JV = 0x5A
+    JNV = 0x5B
 
     # --- Управление потоком выполнения ---
     JMP = 0x60

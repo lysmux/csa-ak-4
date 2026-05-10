@@ -1,0 +1,24 @@
+{
+  "name": "cube",
+  "displayName": "Cube",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.0.0"
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "cube",
+        "aliases": ["Cube"],
+        "extensions": [".cube"]
+      }
+    ],
+    "grammars": [
+      {
+        "language": "cube",
+        "scopeName": "source.cube",
+        "path": "./syntaxes/cube.tmLanguage.json"
+      }
+    ]
+  }
+}

@@ -31,7 +31,6 @@ class Alu:
     BINARY_OPERATIONS: dict[Opcode, BinaryOp] = {
         Opcode.ADD: lambda a, b: a + b,
         Opcode.SUB: lambda a, b: a - b,
-        Opcode.CMP: lambda a, b: a - b,
         Opcode.MUL: lambda a, b: a * b,
         Opcode.DIV: lambda a, b: _trunc_div(_signed(a), _signed(b)),
         Opcode.AND: lambda a, b: a & b,

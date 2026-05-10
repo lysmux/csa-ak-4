@@ -1,4 +1,4 @@
-from collections.abc import Generator
+import logging
 from dataclasses import dataclass
 
 from app.isa.flags import Flags
@@ -6,12 +6,11 @@ from app.isa.instruction import Instruction
 from app.isa.opcode import Opcode
 from app.isa.state import State
 from app.simulation.data_path import DataPath
-from app.simulation.decoder import EXECUTE_SIGNALS, MicroProgram, FETCH, FETCH_SIGNALS
 from app.simulation.memory import Memory
-from app.simulation.register import Register
-from app.simulation.signal import Signal
+from app.simulation.mux import PCMux, RStackMux
 from app.simulation.stack import Stack
 
+logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class CUSnapshot:
@@ -19,7 +18,7 @@ class CUSnapshot:
     tick: int
     pc: int
     instruction: Instruction
-    signals: set[Signal]
+    flags: Flags
 
     ar: int
     dr: int
@@ -45,11 +44,17 @@ class ControlUnit:
         self._instr_memory = instr_memory
         self._return_stack = return_stack
 
-        self._pc = Register()
+        self._vector_table: dict[int, int] = {
+            0: 0
+        }
+
+        self._pc = 0
+        self._ir = 0
+        self._int = False
+
         self._instr = Instruction(Opcode.HALT)
-        self._state = State.HALT
-        self._signals_seq: list[set[Signal]] = []
-        self._signals: set[Signal] = set()
+        self._state = State.FETCH
+
         self._tick = 0
 
 
@@ -59,7 +64,7 @@ class ControlUnit:
 
     @property
     def current_pc(self) -> int:
-        return self._pc.current
+        return self._pc
 
     @property
     def current_instr(self) -> Instruction:
@@ -70,170 +75,173 @@ class ControlUnit:
         return CUSnapshot(
             state=self._state,
             tick=self._tick,
-            pc=self._pc.current,
+            pc=self._pc,
             instruction=self._instr,
-            signals=self._signals,
-            ar=self._data_path.memory.addr.current,
-            dr=self._data_path._dr.current,
+            flags=self._data_path.flags,
+            ar=self._data_path._ar,
+            dr=self._data_path._dr,
             data_memory=self._data_path.memory._memory,
             instr_memory=self._instr_memory._memory,
-            data_stack=self._data_path._stack.stack,
-            tos=self._data_path.tos,
-            nos=self._data_path.nos,
+            data_stack=self._data_path.stack.stack,
+            tos=self._data_path.stack.tos,
+            nos=self._data_path.stack.nos,
             return_stack=self._return_stack.stack,
-            r_tos=self._return_stack.tos.current
+            r_tos=self._return_stack.tos
         )
 
-    def tick(self) -> CUSnapshot:
+    def latch_pc(self, mux: PCMux) -> None:
+        match mux:
+            case PCMux.NEXT:
+                self._pc += 1
+            case PCMux.ADDRESS:
+                self._pc = self._instr.operand
+            case PCMux.VECTOR:
+                self._pc = self._vector_table[0]
+            case PCMux.R_STACK:
+                self._pc = self._return_stack.pop()
+
+    def write_r_stack(self, mux: RStackMux) -> None:
+        value = 0
+        match mux:
+            case RStackMux.PC:
+                value = self._pc
+            case RStackMux.ALU:
+                value = 0
+        self._return_stack.push(value)
+
+    def tick(self) -> None:
         self._tick += 1
 
         match self._state:
-            case State.FETCH:
-                self._signals_seq = FETCH_SIGNALS
-            case State.EXECUTE:
-                self._signals_seq = EXECUTE_SIGNALS[self._instr.opcode]
-
-        return self.snapshot
-
-    # ── Обработка сигналов ───────────────────────────────────────────────────
-
-    def process_signal(self, sig: Signal) -> None:
-        dp = self._data_path
-
-        match sig:
-            # ── PC ───────────────────────────────────────────────────────────
-            case Signal.PC_INC:
-                self._pc.latch(self._pc.current + 1)
-            case Signal.PC_LATCH_IMM:
-                self._pc.latch(self._instr.operand)
-            case Signal.PC_LATCH_RET:
-                self._pc.latch(self._return_stack.pop())
-
-            # ── Память команд ────────────────────────────────────────────────
-            case Signal.IMEM_LATCH_PC:
-                self._instr_memory.addr.latch(self._pc.current)
-            case Signal.IMEM_READ:
-                self._instr_memory.get_signal()
-            case Signal.IR_LATCH:
-                self._instr = Instruction.from_binary(self._instr_memory.out)
-
-            # ── Память данных (адресация) ─────────────────────────────────────
-            case Signal.DMEM_LATCH_IMM:
-                dp.memory.addr.latch(self._instr.operand)
-            case Signal.DMEM_LATCH_TOS:
-                dp.memory.addr.latch(dp.tos)
-            case Signal.DMEM_LATCH_A:
-                dp.memory.addr.latch(dp.a)
-            case Signal.DMEM_READ:
-                dp.dmem_read()
-            case Signal.DMEM_WRITE:
-                dp.dmem_write()
-
-            # ── Регистр DR ───────────────────────────────────────────────────
-            case Signal.DR_LATCH_MEM:
-                dp.dr_latch_mem()
-            case Signal.DR_LATCH_TOS:
-                dp.dr_latch_tos()
-
-            # ── Стек данных ──────────────────────────────────────────────────
-            case Signal.PUSH_DR:
-                dp.push_dr()
-            case Signal.PUSH_IMM:
-                dp.push(self._instr.operand)
-            case Signal.DROP:
-                dp.pop()
-            case Signal.DUP:
-                dp.dup()
-            case Signal.SWAP:
-                dp.swap()
-            case Signal.OVER:
-                dp.over()
-
-            # ── ALU binary ───────────────────────────────────────────────────
-            case Signal.ALU_ADD:
-                dp.alu_binary(Opcode.ADD)
-            case Signal.ALU_SUB:
-                dp.alu_binary(Opcode.SUB)
-            case Signal.ALU_MUL:
-                dp.alu_binary(Opcode.MUL)
-            case Signal.ALU_DIV:
-                dp.alu_binary(Opcode.DIV)
-            case Signal.ALU_AND:
-                dp.alu_binary(Opcode.AND)
-            case Signal.ALU_OR:
-                dp.alu_binary(Opcode.OR)
-            case Signal.ALU_XOR:
-                dp.alu_binary(Opcode.XOR)
-            case Signal.ALU_CMP:
-                dp.alu_cmp()
-
-            # ── ALU unary ────────────────────────────────────────────────────
-            case Signal.ALU_INC:
-                dp.alu_unary(Opcode.INC)
-            case Signal.ALU_DEC:
-                dp.alu_unary(Opcode.DEC)
-            case Signal.ALU_NEG:
-                dp.alu_unary(Opcode.NEG)
-            case Signal.ALU_NOT:
-                dp.alu_unary(Opcode.NOT)
-            case Signal.ALU_SHL:
-                dp.alu_unary(Opcode.SHL)
-            case Signal.ALU_SHR:
-                dp.alu_unary(Opcode.SHR)
-
-            # ── Условные переходы ────────────────────────────────────────────
-            case Signal.JZ_BRANCH:
-                if Flags.Z in dp.flags:
-                    self._pc.latch(self._instr.operand)
-            case Signal.JNZ_BRANCH:
-                if Flags.Z not in dp.flags:
-                    self._pc.latch(self._instr.operand)
-            case Signal.JGE_BRANCH:
-                if (Flags.N in dp.flags) == (Flags.V in dp.flags):
-                    self._pc.latch(self._instr.operand)
-            case Signal.JL_BRANCH:
-                if (Flags.N in dp.flags) != (Flags.V in dp.flags):
-                    self._pc.latch(self._instr.operand)
-            case Signal.JG_BRANCH:
-                if Flags.Z not in dp.flags and (Flags.N in dp.flags) == (Flags.V in dp.flags):
-                    self._pc.latch(self._instr.operand)
-            case Signal.JLE_BRANCH:
-                if Flags.Z in dp.flags or (Flags.N in dp.flags) != (Flags.V in dp.flags):
-                    self._pc.latch(self._instr.operand)
-            case Signal.JC_BRANCH:
-                if Flags.C in dp.flags:
-                    self._pc.latch(self._instr.operand)
-            case Signal.JNC_BRANCH:
-                if Flags.C not in dp.flags:
-                    self._pc.latch(self._instr.operand)
-
-            # ── Стек возвратов ───────────────────────────────────────────────
-            case Signal.RS_PUSH_PC:
-                self._return_stack.push(self._pc.current)
-            case Signal.RS_PUSH_FLAGS:
-                self._return_stack.push(int(dp.flags))
-            case Signal.RS_POP_PC:
-                self._pc.latch(self._return_stack.pop())
-            case Signal.RS_POP_FLAGS:
-                dp.flags = self._return_stack.pop()
-            case Signal.RS_PUSH_TOS:
-                self._return_stack.push(dp.pop())
-            case Signal.RS_POP_TOS:
-                dp.push(self._return_stack.pop())
-            case Signal.RS_LOOP:
-                counter = self._return_stack.tos.current - 1
-                if counter != 0:
-                    self._return_stack.tos.latch(counter)
-                    self._pc.latch(self._instr.operand)
+            case State.START:
+                if self._int:
+                    self._state = State.INTERRUPT
                 else:
-                    self._return_stack.pop()
+                    self._state = State.FETCH
+            case State.INTERRUPT:
+                self.execute_interrupt()
+            case State.FETCH:
+                self.fetch()
+            case State.EXECUTE:
+                self.execute_step()
+            case State.DONE:
+                self._state = State.START
 
-            # ── Регистр A ────────────────────────────────────────────────────
-            case Signal.A_LATCH_TOS:
-                dp.a_latch_tos()
-            case Signal.PUSH_A:
-                dp.push_a()
-            case Signal.A_INC:
-                dp.a_inc()
-            case Signal.A_DEC:
-                dp.a_dec()
+    def fetch(self) -> None:
+        self._ir = self._instr_memory.read(self._pc)
+        self._instr = Instruction.from_binary(self._ir)
+
+        self.latch_pc(PCMux.NEXT)
+
+        self._state = State.EXECUTE
+
+    def execute_step(self) -> None:
+        if self._instr.opcode is Opcode.HALT:
+            self._state = State.HALT
+            return
+        if self._instr.opcode is Opcode.JMP:
+            self.execute_branch(True)
+        if self._instr.opcode is Opcode.JZ:
+            self.execute_branch(bool(self._data_path.flags & Flags.Z))
+        if self._instr.opcode is Opcode.JNZ:
+            self.execute_branch(not bool(self._data_path.flags & Flags.Z))
+        if self._instr.opcode is Opcode.JPL:
+            self.execute_branch(not bool(self._data_path.flags & Flags.N))
+        if self._instr.opcode is Opcode.JMI:
+            self.execute_branch(bool(self._data_path.flags & Flags.N))
+        if self._instr.opcode is Opcode.JGE:
+            n = bool(self._data_path.flags & Flags.N)
+            v = bool(self._data_path.flags & Flags.V)
+            self.execute_branch(n == v)
+        if self._instr.opcode is Opcode.JG:
+            n = bool(self._data_path.flags & Flags.N)
+            v = bool(self._data_path.flags & Flags.V)
+            self.execute_branch(not bool(self._data_path.flags & Flags.Z) and n == v)
+        if self._instr.opcode is Opcode.JLE:
+            n = bool(self._data_path.flags & Flags.N)
+            v = bool(self._data_path.flags & Flags.V)
+            self.execute_branch(bool(self._data_path.flags & Flags.Z) or n != v)
+        if self._instr.opcode is Opcode.JL:
+            n = bool(self._data_path.flags & Flags.N)
+            v = bool(self._data_path.flags & Flags.V)
+            self.execute_branch(n != v)
+        if self._instr.opcode is Opcode.JC:
+            self.execute_branch(bool(self._data_path.flags & Flags.C))
+        if self._instr.opcode is Opcode.JNC:
+            self.execute_branch(not bool(self._data_path.flags & Flags.C))
+        if self._instr.opcode is Opcode.JV:
+            self.execute_branch(bool(self._data_path.flags & Flags.V))
+        if self._instr.opcode is Opcode.JNV:
+            self.execute_branch(not bool(self._data_path.flags & Flags.V))
+
+        if self._instr.opcode is Opcode.LOAD:
+            self._data_path.stack.push(self._data_path.read(self._instr.operand))
+        if self._instr.opcode is Opcode.STORE:
+            self._data_path.write(self._instr.operand, self._data_path.stack.pop())
+
+        if self._instr.opcode is Opcode.PUSH:
+            self._data_path.push(self._instr.operand)
+        if self._instr.opcode is Opcode.DUP:
+            self._data_path.push(self._data_path.stack.tos)
+        if self._instr.opcode is Opcode.DROP:
+            self._data_path.pop()
+        if self._instr.opcode is Opcode.SWAP:
+            tos = self._data_path.pop()
+            nos = self._data_path.pop()
+            self._data_path.push(tos)
+            self._data_path.push(nos)
+        if self._instr.opcode is Opcode.OVER:
+            self._data_path.push(self._data_path.stack.nos)
+
+        if self._instr.opcode is Opcode.CALL:
+            self.write_r_stack(RStackMux.PC)
+            self.latch_pc(PCMux.ADDRESS)
+        if self._instr.opcode is Opcode.RET:
+            self.latch_pc(PCMux.R_STACK)
+        if self._instr.opcode is Opcode.PSHR:
+            self._return_stack.push(self._data_path.pop())
+        if self._instr.opcode is Opcode.POPR:
+            self._data_path.stack.push(self._return_stack.pop())
+        if self._instr.opcode is Opcode.LOOP:
+            cnt = self._return_stack.stack.pop()
+            cnt -= 1
+            self._return_stack.push(cnt)
+
+            if cnt != 0:
+                self.latch_pc(PCMux.ADDRESS)
+
+
+        if self._instr.opcode is Opcode.CMP:
+            self._data_path.cmp()
+
+        if self._data_path.is_alu_binary_opcode(self._instr.opcode):
+            result = self._data_path.perform_alu(
+                opcode=self._instr.opcode,
+                left=self._data_path.stack.pop(),
+                right=self._data_path.stack.pop(),
+            )
+            self._data_path.stack.push(result)
+
+        if self._data_path.is_alu_unary_opcode(self._instr.opcode):
+            result = self._data_path.perform_alu(
+                opcode=self._instr.opcode,
+                left=self._data_path.stack.pop()
+            )
+            self._data_path.stack.push(result)
+
+        self._state = State.DONE
+
+    def execute_interrupt(self) -> None:
+        pass
+
+    def execute_branch(self, condition: bool) -> None:
+        if not condition:
+            return
+
+        self.latch_pc(PCMux.ADDRESS)
+
+
+    def run(self) -> None:
+        while self._state is not State.HALT:
+            self.tick()
+

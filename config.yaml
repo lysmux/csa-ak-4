@@ -1,0 +1,13 @@
+limit: 500
+
+memory_size:
+  instruction: 1000
+  data: 1000
+
+stack_size:
+  ret: 1000
+  data: 1000
+
+io:
+  char:
+    address: 0x222

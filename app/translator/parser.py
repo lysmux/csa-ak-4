@@ -1,4 +1,3 @@
-from pprint import pprint
 
 from app.translator.lexer import Lexer, Token, TokenType
 from app.translator.nodes import (
@@ -22,6 +21,7 @@ from app.translator.nodes import (
     UnaryOp,
     VarDecl,
     WhileStmt,
+    print_ast,
 )
 
 _INFIX_BP: dict[TokenType, int] = {
@@ -312,8 +312,11 @@ class Parser:
 
 
 if __name__ == "__main__":
+    import sys
+    sys.stdout.reconfigure(encoding="utf-8")
+
     with open("examples/sum.cube", encoding="utf-8") as f:
         tokens = Lexer(f.read()).tokenize()
 
     parser = Parser(tokens)
-    pprint(parser.parse())  # noqa: T203
+    print_ast(parser.parse())

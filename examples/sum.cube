@@ -1,0 +1,6 @@
+var a: int = 1 + 2 * 3;
+var b: int = 2;
+
+fun main(): int {
+    return a + b;
+}

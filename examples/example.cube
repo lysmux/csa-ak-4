@@ -1,16 +1,22 @@
-const a = 1
-var b = 2
+const a: byte = 1;
+var b: int = 2;
 
-b = a + b
-b = a - b
-b = a * b
-b = a / b
+b = a + b;
+b = a - b;
+b = a * b;
+b = a / b;
+
+a++;
+a--;
+++b;
+--b;
 
 if (a > b) {
-    print()
-} else if () {}
+    print("123");
+    println("abc")
+} else if () {
 } else {}
 
-while (expr) {}
+while (!(a+b)) {}
 
-fun main()
+fun main(int a, bool b, string c) {}
