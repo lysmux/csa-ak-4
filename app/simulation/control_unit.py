@@ -1,7 +1,7 @@
 import logging
 from dataclasses import dataclass
 
-from app.isa.flags import Flags
+from app.isa.flags import Flags, ProgramState
 from app.isa.instruction import Instruction
 from app.isa.opcode import Opcode
 from app.isa.state import State
@@ -50,7 +50,7 @@ class ControlUnit:
 
         self._pc = 0
         self._ir = 0
-        self._int = False
+        self._program_state = ProgramState(0)
 
         self._instr = Instruction(Opcode.HALT)
         self._state = State.FETCH
@@ -114,7 +114,7 @@ class ControlUnit:
 
         match self._state:
             case State.START:
-                if self._int:
+                if ProgramState.IRQ in self._program_state:
                     self._state = State.INTERRUPT
                 else:
                     self._state = State.FETCH
@@ -142,42 +142,46 @@ class ControlUnit:
         if self._instr.opcode is Opcode.JMP:
             self.execute_branch(True)
         if self._instr.opcode is Opcode.JZ:
-            self.execute_branch(bool(self._data_path.flags & Flags.Z))
+            self.execute_branch(Flags.Z in self._data_path.flags)
         if self._instr.opcode is Opcode.JNZ:
-            self.execute_branch(not bool(self._data_path.flags & Flags.Z))
+            self.execute_branch(Flags.Z not in self._data_path.flags)
         if self._instr.opcode is Opcode.JPL:
-            self.execute_branch(not bool(self._data_path.flags & Flags.N))
+            self.execute_branch(Flags.N not in self._data_path.flags)
         if self._instr.opcode is Opcode.JMI:
-            self.execute_branch(bool(self._data_path.flags & Flags.N))
+            self.execute_branch(Flags.N in self._data_path.flags)
         if self._instr.opcode is Opcode.JGE:
-            n = bool(self._data_path.flags & Flags.N)
-            v = bool(self._data_path.flags & Flags.V)
+            n = Flags.N in self._data_path.flags
+            v = Flags.V in self._data_path.flags
             self.execute_branch(n == v)
         if self._instr.opcode is Opcode.JG:
-            n = bool(self._data_path.flags & Flags.N)
-            v = bool(self._data_path.flags & Flags.V)
-            self.execute_branch(not bool(self._data_path.flags & Flags.Z) and n == v)
+            n = Flags.N in self._data_path.flags
+            v = Flags.V in self._data_path.flags
+            self.execute_branch(Flags.Z not in self._data_path.flags and n == v)
         if self._instr.opcode is Opcode.JLE:
-            n = bool(self._data_path.flags & Flags.N)
-            v = bool(self._data_path.flags & Flags.V)
-            self.execute_branch(bool(self._data_path.flags & Flags.Z) or n != v)
+            n = Flags.N in self._data_path.flags
+            v = Flags.V in self._data_path.flags
+            self.execute_branch(Flags.Z in self._data_path.flags or n != v)
         if self._instr.opcode is Opcode.JL:
-            n = bool(self._data_path.flags & Flags.N)
-            v = bool(self._data_path.flags & Flags.V)
+            n = Flags.N in self._data_path.flags
+            v = Flags.V in self._data_path.flags
             self.execute_branch(n != v)
         if self._instr.opcode is Opcode.JC:
-            self.execute_branch(bool(self._data_path.flags & Flags.C))
+            self.execute_branch(Flags.C in self._data_path.flags)
         if self._instr.opcode is Opcode.JNC:
-            self.execute_branch(not bool(self._data_path.flags & Flags.C))
+            self.execute_branch(Flags.C not in self._data_path.flags)
         if self._instr.opcode is Opcode.JV:
-            self.execute_branch(bool(self._data_path.flags & Flags.V))
+            self.execute_branch(Flags.V in self._data_path.flags)
         if self._instr.opcode is Opcode.JNV:
-            self.execute_branch(not bool(self._data_path.flags & Flags.V))
+            self.execute_branch(Flags.V not in self._data_path.flags)
 
         if self._instr.opcode is Opcode.LOAD:
             self._data_path.stack.push(self._data_path.read(self._instr.operand))
         if self._instr.opcode is Opcode.STORE:
             self._data_path.write(self._instr.operand, self._data_path.stack.pop())
+        if self._instr.opcode is Opcode.LOADI:
+            self._data_path.push(self._data_path.read(self._data_path.pop()))
+        if self._instr.opcode is Opcode.STOREI:
+            self._data_path.write(self._data_path.pop(), self._data_path.pop())
 
         if self._instr.opcode is Opcode.PUSH:
             self._data_path.push(self._instr.operand)
@@ -244,4 +248,3 @@ class ControlUnit:
     def run(self) -> None:
         while self._state is not State.HALT:
             self.tick()
-

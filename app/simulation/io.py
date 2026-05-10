@@ -13,8 +13,6 @@ class CharOutput(Device):
     def string(self) -> str:
         result = ""
         for char in self.buffer:
-            if char == 0:
-                break
             result += chr(char)
         return result
 

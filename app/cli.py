@@ -8,6 +8,7 @@ from app.config import Config
 from app.isa.instruction import Instruction
 from app.simulation.control_unit import ControlUnit
 from app.simulation.data_path import DataPath
+from app.simulation.io import CharOutput
 from app.simulation.memory import Memory
 from app.simulation.stack import Stack
 from app.translator.analyzer import Analyzer
@@ -47,11 +48,11 @@ def compile(source: Path, target: Path):
     with target.with_suffix(".dbg").open("w", encoding="utf-8") as f:
         f.write("Instructions:\n")
         for addr, instr in enumerate(program.instructions):
-            f.write(f'{addr:04x} - {instr:08x} - {Instruction.from_binary(instr).opcode.name} {Instruction.from_binary(instr).operand}\n')
+            f.write(f'{addr:#04x} - {instr:#08x} - {Instruction.from_binary(instr).opcode.name} {Instruction.from_binary(instr).operand:#08x}\n')
 
         f.write("\nData:\n")
         for addr, cell in enumerate(program.data):
-            f.write(f'{addr:04x} - {cell & 0xFFFFFFFF:08x} - .word {cell:#x}\n')
+            f.write(f'{addr:#04x} - {cell & 0xFFFFFFFF:#08x} - .word {cell:#x}\n')
 
     click.echo(f"Compiled {source} to {target.name}")
 
@@ -93,9 +94,13 @@ def run(file: Path, config_path: Path | None):
     return_stack = Stack(config.stack_size.ret)
     data_stack = Stack(config.stack_size.data)
 
+    char_device = CharOutput()
     data_path = DataPath(
         memory=data_memory,
         stack=data_stack,
+        io_map={
+            0x222: char_device
+        }
     )
 
     cu = ControlUnit(
@@ -108,6 +113,7 @@ def run(file: Path, config_path: Path | None):
 
     pprint(cu.snapshot.data_memory[:10])
     pprint(cu.snapshot.data_stack[:10])
+    print(char_device.string)
 
 if __name__ == "__main__":
     cli()

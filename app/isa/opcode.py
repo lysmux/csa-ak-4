@@ -17,6 +17,8 @@ class Opcode(IntEnum):
     # --- Память ---
     LOAD = 0x20
     STORE = 0x21
+    LOADI = 0x22
+    STOREI = 0x23
 
     # --- Арифметические операции ---
     ADD = 0x30

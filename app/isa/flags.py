@@ -17,3 +17,7 @@ class Flags(IntFlag):
         if value & SIGN_BIT:
             flags |= Flags.N
         return flags
+
+class ProgramState(IntFlag):
+    IE = 1 << 0
+    IRQ = 1 << 1

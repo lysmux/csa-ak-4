@@ -12,6 +12,8 @@ from app.translator.nodes import (
 
 _BUILTINS = frozenset({"print", "println"})
 
+MMIO_OUT_ADDR = 0x222
+
 # Comparison op name → conditional jump opcode for the TRUE branch
 _CMP_JUMP: dict[str, Opcode] = {
     "EQUAL":                 Opcode.JZ,
@@ -109,6 +111,30 @@ class CodeGen:
         self._data_size += 1
         self._data.append(0)
         return addr
+
+    def _alloc_string(self, s: str) -> int:
+        addr = self._data_size
+        for ch in s:
+            self._data.append(ord(ch))
+            self._data_size += 1
+        self._data.append(0)
+        self._data_size += 1
+        return addr
+
+    def _emit_cstr_loop(self, addr: int) -> None:
+        lbl_loop = self._fresh_label()
+        lbl_exit = self._fresh_label()
+        self._emit(Opcode.PUSH, addr)
+        self._mark_label(lbl_loop)
+        self._emit(Opcode.DUP)
+        self._emit(Opcode.LOADI)
+        self._emit_jump(Opcode.JZ, lbl_exit)
+        self._emit(Opcode.STORE, MMIO_OUT_ADDR)
+        self._emit(Opcode.INC)
+        self._emit_jump(Opcode.JMP, lbl_loop)
+        self._mark_label(lbl_exit)
+        self._emit(Opcode.DROP)
+        self._emit(Opcode.DROP)
 
     # --- compile-time evaluation -------------------------------------------
 
@@ -355,8 +381,15 @@ class CodeGen:
 
             case Call(name=name, args=args) if name in _BUILTINS:
                 for arg in args:
-                    self._gen(arg)
-                    self._emit(Opcode.DROP)
+                    if isinstance(arg, String):
+                        addr = self._alloc_string(arg.value)
+                        self._emit_cstr_loop(addr)
+                    else:
+                        self._gen(arg)
+                        self._emit(Opcode.STORE, MMIO_OUT_ADDR)
+                if name == "println":
+                    self._emit(Opcode.PUSH, ord('\n'))
+                    self._emit(Opcode.STORE, MMIO_OUT_ADDR)
                 self._emit(Opcode.PUSH, 0)   # dummy return value
 
             case Call(name=name, args=args):

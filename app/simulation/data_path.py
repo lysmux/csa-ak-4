@@ -50,6 +50,7 @@ class DataPath:
 
     def push(self, value: int) -> None:
         self.stack.push(value)
+        self._flags = Flags.nz(value)
 
     def cmp(self) -> None:
         result = self._alu.perform(Opcode.SUB, self.stack.nos, self.stack.tos)
