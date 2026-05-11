@@ -7,6 +7,7 @@ class PCMux(IntEnum):
     R_STACK = auto()
     VECTOR = auto()
 
+
 class RStackMux(IntEnum):
     PC = auto()
     ALU = auto()

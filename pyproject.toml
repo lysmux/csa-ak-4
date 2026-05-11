@@ -23,7 +23,8 @@ dev = [
 line-length = 120
 target-version = "py312"
 show-fixes = true
-src = ["src", "tests"]
+src = ["app", "tests"]
+exclude = ["tests"]
 
 [tool.ruff.lint]
 select = [
@@ -48,12 +49,16 @@ select = [
     "LOG"     # flake8-logging
 ]
 ignore = [
-    "D10"
+    "D10",
+    "S301"
 ]
 pydocstyle = { convention = "google" }
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**.py" = ["S101"]  # use of `assert`
+"tests/**.py" = [
+    "S101",
+    "ANN201"
+]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -80,6 +85,9 @@ exclude_also = [
 addopts = "--strict-markers --showlocals --verbosity 2"
 log_level = "INFO"
 pythonpath = ["."]
+markers = [
+    "golden: marks tests as golden",
+]
 
 
 [tool.pyright]

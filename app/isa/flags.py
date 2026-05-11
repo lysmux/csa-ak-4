@@ -18,6 +18,7 @@ class Flags(IntFlag):
             flags |= Flags.N
         return flags
 
+
 class ProgramState(IntFlag):
     IE = 1 << 0
     IRQ = 1 << 1

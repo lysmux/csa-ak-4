@@ -1,0 +1,276 @@
+name: hello
+source: |-
+  fun main() {
+      print(char_output, "Hello, World!\n");
+  }
+config:
+  limit: 2000
+  memory_size:
+    instruction: 500
+    data: 500
+  stack_size:
+    ret: 100
+    data: 100
+  io:
+    outputs:
+      char_output:
+        kind: char
+        address: 546
+      int_output:
+        kind: int
+        address: 548
+max_trace: 200
+expected_output:
+  char_output: |
+    Hello, World!
+  int_output: []
+ast: |
+  Program
+  └─ body:
+     └─ [0] FunDecl  name='main'  params=[]  return_type=None
+        └─ body: Block
+           └─ body:
+              └─ [0] ExprStmt
+                 └─ expr: Call  name='print'
+                    └─ args:
+                       ├─ [0] Ident  name='char_output'
+                       └─ [1] String  value='Hello, World!\n'
+machine_code: |-
+  Instructions:
+    0x0000 - 0x6100000003 - CALL 0x00000003
+    0x0001 - 0x200000000 - HALT 0x00000000
+    0x0002 - 0x600000000f - JMP 0x0000000f
+    0x0003 - 0x1000000000 - PUSH 0x00000000
+    0x0004 - 0x1100000000 - DUP 0x00000000
+    0x0005 - 0x2200000000 - LOADI 0x00000000
+    0x0006 - 0x500000000a - JZ 0x0000000a
+    0x0007 - 0x2100000222 - STORE 0x00000222
+    0x0008 - 0x3500000000 - INC 0x00000000
+    0x0009 - 0x6000000004 - JMP 0x00000004
+    0x000a - 0x1200000000 - DROP 0x00000000
+    0x000b - 0x1200000000 - DROP 0x00000000
+    0x000c - 0x1000000000 - PUSH 0x00000000
+    0x000d - 0x1200000000 - DROP 0x00000000
+    0x000e - 0x6200000000 - RET 0x00000000
+
+  Data:
+    0x0000 - 0x00000048 - .word 0x00000048
+    0x0001 - 0x00000065 - .word 0x00000065
+    0x0002 - 0x0000006c - .word 0x0000006c
+    0x0003 - 0x0000006c - .word 0x0000006c
+    0x0004 - 0x0000006f - .word 0x0000006f
+    0x0005 - 0x0000002c - .word 0x0000002c
+    0x0006 - 0x00000020 - .word 0x00000020
+    0x0007 - 0x00000057 - .word 0x00000057
+    0x0008 - 0x0000006f - .word 0x0000006f
+    0x0009 - 0x00000072 - .word 0x00000072
+    0x000a - 0x0000006c - .word 0x0000006c
+    0x000b - 0x00000064 - .word 0x00000064
+    0x000c - 0x00000021 - .word 0x00000021
+    0x000d - 0x0000000a - .word 0x0000000a
+    0x000e - 0x00000000 - .word 0x00000000
+
+  Interrupt handlers:
+trace:
+  total_ticks: 378
+  lines: |-
+    tick=     1  st=EXECUTE   pc=0x0001  ir=CALL     0x00000003  flags=----  tos=0x00000000  nos=0x00000000  rtos=0x00000000
+    tick=     2  st=DONE      pc=0x0003  ir=CALL     0x00000003  flags=----  tos=0x00000000  nos=0x00000000  rtos=0x00000001
+    tick=     3  st=START     pc=0x0003  ir=CALL     0x00000003  flags=----  tos=0x00000000  nos=0x00000000  rtos=0x00000001
+    tick=     4  st=FETCH     pc=0x0003  ir=CALL     0x00000003  flags=----  tos=0x00000000  nos=0x00000000  rtos=0x00000001
+    tick=     5  st=EXECUTE   pc=0x0004  ir=PUSH     0x00000000  flags=----  tos=0x00000000  nos=0x00000000  rtos=0x00000001
+    tick=     6  st=DONE      pc=0x0004  ir=PUSH     0x00000000  flags=-Z--  tos=0x00000000  nos=0x00000000  rtos=0x00000001
+    tick=     7  st=START     pc=0x0004  ir=PUSH     0x00000000  flags=-Z--  tos=0x00000000  nos=0x00000000  rtos=0x00000001
+    tick=     8  st=FETCH     pc=0x0004  ir=PUSH     0x00000000  flags=-Z--  tos=0x00000000  nos=0x00000000  rtos=0x00000001
+    tick=     9  st=EXECUTE   pc=0x0005  ir=DUP      0x00000000  flags=-Z--  tos=0x00000000  nos=0x00000000  rtos=0x00000001
+    tick=    10  st=DONE      pc=0x0005  ir=DUP      0x00000000  flags=-Z--  tos=0x00000000  nos=0x00000000  rtos=0x00000001
+    tick=    11  st=START     pc=0x0005  ir=DUP      0x00000000  flags=-Z--  tos=0x00000000  nos=0x00000000  rtos=0x00000001
+    tick=    12  st=FETCH     pc=0x0005  ir=DUP      0x00000000  flags=-Z--  tos=0x00000000  nos=0x00000000  rtos=0x00000001
+    tick=    13  st=EXECUTE   pc=0x0006  ir=LOADI    0x00000000  flags=-Z--  tos=0x00000000  nos=0x00000000  rtos=0x00000001
+    tick=    14  st=DONE      pc=0x0006  ir=LOADI    0x00000000  flags=----  tos=0x00000048  nos=0x00000000  rtos=0x00000001
+    tick=    15  st=START     pc=0x0006  ir=LOADI    0x00000000  flags=----  tos=0x00000048  nos=0x00000000  rtos=0x00000001
+    tick=    16  st=FETCH     pc=0x0006  ir=LOADI    0x00000000  flags=----  tos=0x00000048  nos=0x00000000  rtos=0x00000001
+    tick=    17  st=EXECUTE   pc=0x0007  ir=JZ       0x0000000a  flags=----  tos=0x00000048  nos=0x00000000  rtos=0x00000001
+    tick=    18  st=DONE      pc=0x0007  ir=JZ       0x0000000a  flags=----  tos=0x00000048  nos=0x00000000  rtos=0x00000001
+    tick=    19  st=START     pc=0x0007  ir=JZ       0x0000000a  flags=----  tos=0x00000048  nos=0x00000000  rtos=0x00000001
+    tick=    20  st=FETCH     pc=0x0007  ir=JZ       0x0000000a  flags=----  tos=0x00000048  nos=0x00000000  rtos=0x00000001
+    tick=    21  st=EXECUTE   pc=0x0008  ir=STORE    0x00000222  flags=----  tos=0x00000048  nos=0x00000000  rtos=0x00000001
+    tick=    22  st=DONE      pc=0x0008  ir=STORE    0x00000222  flags=----  tos=0x00000000  nos=0x00000000  rtos=0x00000001
+    tick=    23  st=START     pc=0x0008  ir=STORE    0x00000222  flags=----  tos=0x00000000  nos=0x00000000  rtos=0x00000001
+    tick=    24  st=FETCH     pc=0x0008  ir=STORE    0x00000222  flags=----  tos=0x00000000  nos=0x00000000  rtos=0x00000001
+    tick=    25  st=EXECUTE   pc=0x0009  ir=INC      0x00000000  flags=----  tos=0x00000000  nos=0x00000000  rtos=0x00000001
+    tick=    26  st=DONE      pc=0x0009  ir=INC      0x00000000  flags=----  tos=0x00000001  nos=0x00000000  rtos=0x00000001
+    tick=    27  st=START     pc=0x0009  ir=INC      0x00000000  flags=----  tos=0x00000001  nos=0x00000000  rtos=0x00000001
+    tick=    28  st=FETCH     pc=0x0009  ir=INC      0x00000000  flags=----  tos=0x00000001  nos=0x00000000  rtos=0x00000001
+    tick=    29  st=EXECUTE   pc=0x000a  ir=JMP      0x00000004  flags=----  tos=0x00000001  nos=0x00000000  rtos=0x00000001
+    tick=    30  st=DONE      pc=0x0004  ir=JMP      0x00000004  flags=----  tos=0x00000001  nos=0x00000000  rtos=0x00000001
+    tick=    31  st=START     pc=0x0004  ir=JMP      0x00000004  flags=----  tos=0x00000001  nos=0x00000000  rtos=0x00000001
+    tick=    32  st=FETCH     pc=0x0004  ir=JMP      0x00000004  flags=----  tos=0x00000001  nos=0x00000000  rtos=0x00000001
+    tick=    33  st=EXECUTE   pc=0x0005  ir=DUP      0x00000000  flags=----  tos=0x00000001  nos=0x00000000  rtos=0x00000001
+    tick=    34  st=DONE      pc=0x0005  ir=DUP      0x00000000  flags=----  tos=0x00000001  nos=0x00000001  rtos=0x00000001
+    tick=    35  st=START     pc=0x0005  ir=DUP      0x00000000  flags=----  tos=0x00000001  nos=0x00000001  rtos=0x00000001
+    tick=    36  st=FETCH     pc=0x0005  ir=DUP      0x00000000  flags=----  tos=0x00000001  nos=0x00000001  rtos=0x00000001
+    tick=    37  st=EXECUTE   pc=0x0006  ir=LOADI    0x00000000  flags=----  tos=0x00000001  nos=0x00000001  rtos=0x00000001
+    tick=    38  st=DONE      pc=0x0006  ir=LOADI    0x00000000  flags=----  tos=0x00000065  nos=0x00000001  rtos=0x00000001
+    tick=    39  st=START     pc=0x0006  ir=LOADI    0x00000000  flags=----  tos=0x00000065  nos=0x00000001  rtos=0x00000001
+    tick=    40  st=FETCH     pc=0x0006  ir=LOADI    0x00000000  flags=----  tos=0x00000065  nos=0x00000001  rtos=0x00000001
+    tick=    41  st=EXECUTE   pc=0x0007  ir=JZ       0x0000000a  flags=----  tos=0x00000065  nos=0x00000001  rtos=0x00000001
+    tick=    42  st=DONE      pc=0x0007  ir=JZ       0x0000000a  flags=----  tos=0x00000065  nos=0x00000001  rtos=0x00000001
+    tick=    43  st=START     pc=0x0007  ir=JZ       0x0000000a  flags=----  tos=0x00000065  nos=0x00000001  rtos=0x00000001
+    tick=    44  st=FETCH     pc=0x0007  ir=JZ       0x0000000a  flags=----  tos=0x00000065  nos=0x00000001  rtos=0x00000001
+    tick=    45  st=EXECUTE   pc=0x0008  ir=STORE    0x00000222  flags=----  tos=0x00000065  nos=0x00000001  rtos=0x00000001
+    tick=    46  st=DONE      pc=0x0008  ir=STORE    0x00000222  flags=----  tos=0x00000001  nos=0x00000000  rtos=0x00000001
+    tick=    47  st=START     pc=0x0008  ir=STORE    0x00000222  flags=----  tos=0x00000001  nos=0x00000000  rtos=0x00000001
+    tick=    48  st=FETCH     pc=0x0008  ir=STORE    0x00000222  flags=----  tos=0x00000001  nos=0x00000000  rtos=0x00000001
+    tick=    49  st=EXECUTE   pc=0x0009  ir=INC      0x00000000  flags=----  tos=0x00000001  nos=0x00000000  rtos=0x00000001
+    tick=    50  st=DONE      pc=0x0009  ir=INC      0x00000000  flags=----  tos=0x00000002  nos=0x00000000  rtos=0x00000001
+    tick=    51  st=START     pc=0x0009  ir=INC      0x00000000  flags=----  tos=0x00000002  nos=0x00000000  rtos=0x00000001
+    tick=    52  st=FETCH     pc=0x0009  ir=INC      0x00000000  flags=----  tos=0x00000002  nos=0x00000000  rtos=0x00000001
+    tick=    53  st=EXECUTE   pc=0x000a  ir=JMP      0x00000004  flags=----  tos=0x00000002  nos=0x00000000  rtos=0x00000001
+    tick=    54  st=DONE      pc=0x0004  ir=JMP      0x00000004  flags=----  tos=0x00000002  nos=0x00000000  rtos=0x00000001
+    tick=    55  st=START     pc=0x0004  ir=JMP      0x00000004  flags=----  tos=0x00000002  nos=0x00000000  rtos=0x00000001
+    tick=    56  st=FETCH     pc=0x0004  ir=JMP      0x00000004  flags=----  tos=0x00000002  nos=0x00000000  rtos=0x00000001
+    tick=    57  st=EXECUTE   pc=0x0005  ir=DUP      0x00000000  flags=----  tos=0x00000002  nos=0x00000000  rtos=0x00000001
+    tick=    58  st=DONE      pc=0x0005  ir=DUP      0x00000000  flags=----  tos=0x00000002  nos=0x00000002  rtos=0x00000001
+    tick=    59  st=START     pc=0x0005  ir=DUP      0x00000000  flags=----  tos=0x00000002  nos=0x00000002  rtos=0x00000001
+    tick=    60  st=FETCH     pc=0x0005  ir=DUP      0x00000000  flags=----  tos=0x00000002  nos=0x00000002  rtos=0x00000001
+    tick=    61  st=EXECUTE   pc=0x0006  ir=LOADI    0x00000000  flags=----  tos=0x00000002  nos=0x00000002  rtos=0x00000001
+    tick=    62  st=DONE      pc=0x0006  ir=LOADI    0x00000000  flags=----  tos=0x0000006c  nos=0x00000002  rtos=0x00000001
+    tick=    63  st=START     pc=0x0006  ir=LOADI    0x00000000  flags=----  tos=0x0000006c  nos=0x00000002  rtos=0x00000001
+    tick=    64  st=FETCH     pc=0x0006  ir=LOADI    0x00000000  flags=----  tos=0x0000006c  nos=0x00000002  rtos=0x00000001
+    tick=    65  st=EXECUTE   pc=0x0007  ir=JZ       0x0000000a  flags=----  tos=0x0000006c  nos=0x00000002  rtos=0x00000001
+    tick=    66  st=DONE      pc=0x0007  ir=JZ       0x0000000a  flags=----  tos=0x0000006c  nos=0x00000002  rtos=0x00000001
+    tick=    67  st=START     pc=0x0007  ir=JZ       0x0000000a  flags=----  tos=0x0000006c  nos=0x00000002  rtos=0x00000001
+    tick=    68  st=FETCH     pc=0x0007  ir=JZ       0x0000000a  flags=----  tos=0x0000006c  nos=0x00000002  rtos=0x00000001
+    tick=    69  st=EXECUTE   pc=0x0008  ir=STORE    0x00000222  flags=----  tos=0x0000006c  nos=0x00000002  rtos=0x00000001
+    tick=    70  st=DONE      pc=0x0008  ir=STORE    0x00000222  flags=----  tos=0x00000002  nos=0x00000000  rtos=0x00000001
+    tick=    71  st=START     pc=0x0008  ir=STORE    0x00000222  flags=----  tos=0x00000002  nos=0x00000000  rtos=0x00000001
+    tick=    72  st=FETCH     pc=0x0008  ir=STORE    0x00000222  flags=----  tos=0x00000002  nos=0x00000000  rtos=0x00000001
+    tick=    73  st=EXECUTE   pc=0x0009  ir=INC      0x00000000  flags=----  tos=0x00000002  nos=0x00000000  rtos=0x00000001
+    tick=    74  st=DONE      pc=0x0009  ir=INC      0x00000000  flags=----  tos=0x00000003  nos=0x00000000  rtos=0x00000001
+    tick=    75  st=START     pc=0x0009  ir=INC      0x00000000  flags=----  tos=0x00000003  nos=0x00000000  rtos=0x00000001
+    tick=    76  st=FETCH     pc=0x0009  ir=INC      0x00000000  flags=----  tos=0x00000003  nos=0x00000000  rtos=0x00000001
+    tick=    77  st=EXECUTE   pc=0x000a  ir=JMP      0x00000004  flags=----  tos=0x00000003  nos=0x00000000  rtos=0x00000001
+    tick=    78  st=DONE      pc=0x0004  ir=JMP      0x00000004  flags=----  tos=0x00000003  nos=0x00000000  rtos=0x00000001
+    tick=    79  st=START     pc=0x0004  ir=JMP      0x00000004  flags=----  tos=0x00000003  nos=0x00000000  rtos=0x00000001
+    tick=    80  st=FETCH     pc=0x0004  ir=JMP      0x00000004  flags=----  tos=0x00000003  nos=0x00000000  rtos=0x00000001
+    tick=    81  st=EXECUTE   pc=0x0005  ir=DUP      0x00000000  flags=----  tos=0x00000003  nos=0x00000000  rtos=0x00000001
+    tick=    82  st=DONE      pc=0x0005  ir=DUP      0x00000000  flags=----  tos=0x00000003  nos=0x00000003  rtos=0x00000001
+    tick=    83  st=START     pc=0x0005  ir=DUP      0x00000000  flags=----  tos=0x00000003  nos=0x00000003  rtos=0x00000001
+    tick=    84  st=FETCH     pc=0x0005  ir=DUP      0x00000000  flags=----  tos=0x00000003  nos=0x00000003  rtos=0x00000001
+    tick=    85  st=EXECUTE   pc=0x0006  ir=LOADI    0x00000000  flags=----  tos=0x00000003  nos=0x00000003  rtos=0x00000001
+    tick=    86  st=DONE      pc=0x0006  ir=LOADI    0x00000000  flags=----  tos=0x0000006c  nos=0x00000003  rtos=0x00000001
+    tick=    87  st=START     pc=0x0006  ir=LOADI    0x00000000  flags=----  tos=0x0000006c  nos=0x00000003  rtos=0x00000001
+    tick=    88  st=FETCH     pc=0x0006  ir=LOADI    0x00000000  flags=----  tos=0x0000006c  nos=0x00000003  rtos=0x00000001
+    tick=    89  st=EXECUTE   pc=0x0007  ir=JZ       0x0000000a  flags=----  tos=0x0000006c  nos=0x00000003  rtos=0x00000001
+    tick=    90  st=DONE      pc=0x0007  ir=JZ       0x0000000a  flags=----  tos=0x0000006c  nos=0x00000003  rtos=0x00000001
+    tick=    91  st=START     pc=0x0007  ir=JZ       0x0000000a  flags=----  tos=0x0000006c  nos=0x00000003  rtos=0x00000001
+    tick=    92  st=FETCH     pc=0x0007  ir=JZ       0x0000000a  flags=----  tos=0x0000006c  nos=0x00000003  rtos=0x00000001
+    tick=    93  st=EXECUTE   pc=0x0008  ir=STORE    0x00000222  flags=----  tos=0x0000006c  nos=0x00000003  rtos=0x00000001
+    tick=    94  st=DONE      pc=0x0008  ir=STORE    0x00000222  flags=----  tos=0x00000003  nos=0x00000000  rtos=0x00000001
+    tick=    95  st=START     pc=0x0008  ir=STORE    0x00000222  flags=----  tos=0x00000003  nos=0x00000000  rtos=0x00000001
+    tick=    96  st=FETCH     pc=0x0008  ir=STORE    0x00000222  flags=----  tos=0x00000003  nos=0x00000000  rtos=0x00000001
+    tick=    97  st=EXECUTE   pc=0x0009  ir=INC      0x00000000  flags=----  tos=0x00000003  nos=0x00000000  rtos=0x00000001
+    tick=    98  st=DONE      pc=0x0009  ir=INC      0x00000000  flags=----  tos=0x00000004  nos=0x00000000  rtos=0x00000001
+    tick=    99  st=START     pc=0x0009  ir=INC      0x00000000  flags=----  tos=0x00000004  nos=0x00000000  rtos=0x00000001
+    tick=   100  st=FETCH     pc=0x0009  ir=INC      0x00000000  flags=----  tos=0x00000004  nos=0x00000000  rtos=0x00000001
+    tick=   101  st=EXECUTE   pc=0x000a  ir=JMP      0x00000004  flags=----  tos=0x00000004  nos=0x00000000  rtos=0x00000001
+    tick=   102  st=DONE      pc=0x0004  ir=JMP      0x00000004  flags=----  tos=0x00000004  nos=0x00000000  rtos=0x00000001
+    tick=   103  st=START     pc=0x0004  ir=JMP      0x00000004  flags=----  tos=0x00000004  nos=0x00000000  rtos=0x00000001
+    tick=   104  st=FETCH     pc=0x0004  ir=JMP      0x00000004  flags=----  tos=0x00000004  nos=0x00000000  rtos=0x00000001
+    tick=   105  st=EXECUTE   pc=0x0005  ir=DUP      0x00000000  flags=----  tos=0x00000004  nos=0x00000000  rtos=0x00000001
+    tick=   106  st=DONE      pc=0x0005  ir=DUP      0x00000000  flags=----  tos=0x00000004  nos=0x00000004  rtos=0x00000001
+    tick=   107  st=START     pc=0x0005  ir=DUP      0x00000000  flags=----  tos=0x00000004  nos=0x00000004  rtos=0x00000001
+    tick=   108  st=FETCH     pc=0x0005  ir=DUP      0x00000000  flags=----  tos=0x00000004  nos=0x00000004  rtos=0x00000001
+    tick=   109  st=EXECUTE   pc=0x0006  ir=LOADI    0x00000000  flags=----  tos=0x00000004  nos=0x00000004  rtos=0x00000001
+    tick=   110  st=DONE      pc=0x0006  ir=LOADI    0x00000000  flags=----  tos=0x0000006f  nos=0x00000004  rtos=0x00000001
+    tick=   111  st=START     pc=0x0006  ir=LOADI    0x00000000  flags=----  tos=0x0000006f  nos=0x00000004  rtos=0x00000001
+    tick=   112  st=FETCH     pc=0x0006  ir=LOADI    0x00000000  flags=----  tos=0x0000006f  nos=0x00000004  rtos=0x00000001
+    tick=   113  st=EXECUTE   pc=0x0007  ir=JZ       0x0000000a  flags=----  tos=0x0000006f  nos=0x00000004  rtos=0x00000001
+    tick=   114  st=DONE      pc=0x0007  ir=JZ       0x0000000a  flags=----  tos=0x0000006f  nos=0x00000004  rtos=0x00000001
+    tick=   115  st=START     pc=0x0007  ir=JZ       0x0000000a  flags=----  tos=0x0000006f  nos=0x00000004  rtos=0x00000001
+    tick=   116  st=FETCH     pc=0x0007  ir=JZ       0x0000000a  flags=----  tos=0x0000006f  nos=0x00000004  rtos=0x00000001
+    tick=   117  st=EXECUTE   pc=0x0008  ir=STORE    0x00000222  flags=----  tos=0x0000006f  nos=0x00000004  rtos=0x00000001
+    tick=   118  st=DONE      pc=0x0008  ir=STORE    0x00000222  flags=----  tos=0x00000004  nos=0x00000000  rtos=0x00000001
+    tick=   119  st=START     pc=0x0008  ir=STORE    0x00000222  flags=----  tos=0x00000004  nos=0x00000000  rtos=0x00000001
+    tick=   120  st=FETCH     pc=0x0008  ir=STORE    0x00000222  flags=----  tos=0x00000004  nos=0x00000000  rtos=0x00000001
+    tick=   121  st=EXECUTE   pc=0x0009  ir=INC      0x00000000  flags=----  tos=0x00000004  nos=0x00000000  rtos=0x00000001
+    tick=   122  st=DONE      pc=0x0009  ir=INC      0x00000000  flags=----  tos=0x00000005  nos=0x00000000  rtos=0x00000001
+    tick=   123  st=START     pc=0x0009  ir=INC      0x00000000  flags=----  tos=0x00000005  nos=0x00000000  rtos=0x00000001
+    tick=   124  st=FETCH     pc=0x0009  ir=INC      0x00000000  flags=----  tos=0x00000005  nos=0x00000000  rtos=0x00000001
+    tick=   125  st=EXECUTE   pc=0x000a  ir=JMP      0x00000004  flags=----  tos=0x00000005  nos=0x00000000  rtos=0x00000001
+    tick=   126  st=DONE      pc=0x0004  ir=JMP      0x00000004  flags=----  tos=0x00000005  nos=0x00000000  rtos=0x00000001
+    tick=   127  st=START     pc=0x0004  ir=JMP      0x00000004  flags=----  tos=0x00000005  nos=0x00000000  rtos=0x00000001
+    tick=   128  st=FETCH     pc=0x0004  ir=JMP      0x00000004  flags=----  tos=0x00000005  nos=0x00000000  rtos=0x00000001
+    tick=   129  st=EXECUTE   pc=0x0005  ir=DUP      0x00000000  flags=----  tos=0x00000005  nos=0x00000000  rtos=0x00000001
+    tick=   130  st=DONE      pc=0x0005  ir=DUP      0x00000000  flags=----  tos=0x00000005  nos=0x00000005  rtos=0x00000001
+    tick=   131  st=START     pc=0x0005  ir=DUP      0x00000000  flags=----  tos=0x00000005  nos=0x00000005  rtos=0x00000001
+    tick=   132  st=FETCH     pc=0x0005  ir=DUP      0x00000000  flags=----  tos=0x00000005  nos=0x00000005  rtos=0x00000001
+    tick=   133  st=EXECUTE   pc=0x0006  ir=LOADI    0x00000000  flags=----  tos=0x00000005  nos=0x00000005  rtos=0x00000001
+    tick=   134  st=DONE      pc=0x0006  ir=LOADI    0x00000000  flags=----  tos=0x0000002c  nos=0x00000005  rtos=0x00000001
+    tick=   135  st=START     pc=0x0006  ir=LOADI    0x00000000  flags=----  tos=0x0000002c  nos=0x00000005  rtos=0x00000001
+    tick=   136  st=FETCH     pc=0x0006  ir=LOADI    0x00000000  flags=----  tos=0x0000002c  nos=0x00000005  rtos=0x00000001
+    tick=   137  st=EXECUTE   pc=0x0007  ir=JZ       0x0000000a  flags=----  tos=0x0000002c  nos=0x00000005  rtos=0x00000001
+    tick=   138  st=DONE      pc=0x0007  ir=JZ       0x0000000a  flags=----  tos=0x0000002c  nos=0x00000005  rtos=0x00000001
+    tick=   139  st=START     pc=0x0007  ir=JZ       0x0000000a  flags=----  tos=0x0000002c  nos=0x00000005  rtos=0x00000001
+    tick=   140  st=FETCH     pc=0x0007  ir=JZ       0x0000000a  flags=----  tos=0x0000002c  nos=0x00000005  rtos=0x00000001
+    tick=   141  st=EXECUTE   pc=0x0008  ir=STORE    0x00000222  flags=----  tos=0x0000002c  nos=0x00000005  rtos=0x00000001
+    tick=   142  st=DONE      pc=0x0008  ir=STORE    0x00000222  flags=----  tos=0x00000005  nos=0x00000000  rtos=0x00000001
+    tick=   143  st=START     pc=0x0008  ir=STORE    0x00000222  flags=----  tos=0x00000005  nos=0x00000000  rtos=0x00000001
+    tick=   144  st=FETCH     pc=0x0008  ir=STORE    0x00000222  flags=----  tos=0x00000005  nos=0x00000000  rtos=0x00000001
+    tick=   145  st=EXECUTE   pc=0x0009  ir=INC      0x00000000  flags=----  tos=0x00000005  nos=0x00000000  rtos=0x00000001
+    tick=   146  st=DONE      pc=0x0009  ir=INC      0x00000000  flags=----  tos=0x00000006  nos=0x00000000  rtos=0x00000001
+    tick=   147  st=START     pc=0x0009  ir=INC      0x00000000  flags=----  tos=0x00000006  nos=0x00000000  rtos=0x00000001
+    tick=   148  st=FETCH     pc=0x0009  ir=INC      0x00000000  flags=----  tos=0x00000006  nos=0x00000000  rtos=0x00000001
+    tick=   149  st=EXECUTE   pc=0x000a  ir=JMP      0x00000004  flags=----  tos=0x00000006  nos=0x00000000  rtos=0x00000001
+    tick=   150  st=DONE      pc=0x0004  ir=JMP      0x00000004  flags=----  tos=0x00000006  nos=0x00000000  rtos=0x00000001
+    tick=   151  st=START     pc=0x0004  ir=JMP      0x00000004  flags=----  tos=0x00000006  nos=0x00000000  rtos=0x00000001
+    tick=   152  st=FETCH     pc=0x0004  ir=JMP      0x00000004  flags=----  tos=0x00000006  nos=0x00000000  rtos=0x00000001
+    tick=   153  st=EXECUTE   pc=0x0005  ir=DUP      0x00000000  flags=----  tos=0x00000006  nos=0x00000000  rtos=0x00000001
+    tick=   154  st=DONE      pc=0x0005  ir=DUP      0x00000000  flags=----  tos=0x00000006  nos=0x00000006  rtos=0x00000001
+    tick=   155  st=START     pc=0x0005  ir=DUP      0x00000000  flags=----  tos=0x00000006  nos=0x00000006  rtos=0x00000001
+    tick=   156  st=FETCH     pc=0x0005  ir=DUP      0x00000000  flags=----  tos=0x00000006  nos=0x00000006  rtos=0x00000001
+    tick=   157  st=EXECUTE   pc=0x0006  ir=LOADI    0x00000000  flags=----  tos=0x00000006  nos=0x00000006  rtos=0x00000001
+    tick=   158  st=DONE      pc=0x0006  ir=LOADI    0x00000000  flags=----  tos=0x00000020  nos=0x00000006  rtos=0x00000001
+    tick=   159  st=START     pc=0x0006  ir=LOADI    0x00000000  flags=----  tos=0x00000020  nos=0x00000006  rtos=0x00000001
+    tick=   160  st=FETCH     pc=0x0006  ir=LOADI    0x00000000  flags=----  tos=0x00000020  nos=0x00000006  rtos=0x00000001
+    tick=   161  st=EXECUTE   pc=0x0007  ir=JZ       0x0000000a  flags=----  tos=0x00000020  nos=0x00000006  rtos=0x00000001
+    tick=   162  st=DONE      pc=0x0007  ir=JZ       0x0000000a  flags=----  tos=0x00000020  nos=0x00000006  rtos=0x00000001
+    tick=   163  st=START     pc=0x0007  ir=JZ       0x0000000a  flags=----  tos=0x00000020  nos=0x00000006  rtos=0x00000001
+    tick=   164  st=FETCH     pc=0x0007  ir=JZ       0x0000000a  flags=----  tos=0x00000020  nos=0x00000006  rtos=0x00000001
+    tick=   165  st=EXECUTE   pc=0x0008  ir=STORE    0x00000222  flags=----  tos=0x00000020  nos=0x00000006  rtos=0x00000001
+    tick=   166  st=DONE      pc=0x0008  ir=STORE    0x00000222  flags=----  tos=0x00000006  nos=0x00000000  rtos=0x00000001
+    tick=   167  st=START     pc=0x0008  ir=STORE    0x00000222  flags=----  tos=0x00000006  nos=0x00000000  rtos=0x00000001
+    tick=   168  st=FETCH     pc=0x0008  ir=STORE    0x00000222  flags=----  tos=0x00000006  nos=0x00000000  rtos=0x00000001
+    tick=   169  st=EXECUTE   pc=0x0009  ir=INC      0x00000000  flags=----  tos=0x00000006  nos=0x00000000  rtos=0x00000001
+    tick=   170  st=DONE      pc=0x0009  ir=INC      0x00000000  flags=----  tos=0x00000007  nos=0x00000000  rtos=0x00000001
+    tick=   171  st=START     pc=0x0009  ir=INC      0x00000000  flags=----  tos=0x00000007  nos=0x00000000  rtos=0x00000001
+    tick=   172  st=FETCH     pc=0x0009  ir=INC      0x00000000  flags=----  tos=0x00000007  nos=0x00000000  rtos=0x00000001
+    tick=   173  st=EXECUTE   pc=0x000a  ir=JMP      0x00000004  flags=----  tos=0x00000007  nos=0x00000000  rtos=0x00000001
+    tick=   174  st=DONE      pc=0x0004  ir=JMP      0x00000004  flags=----  tos=0x00000007  nos=0x00000000  rtos=0x00000001
+    tick=   175  st=START     pc=0x0004  ir=JMP      0x00000004  flags=----  tos=0x00000007  nos=0x00000000  rtos=0x00000001
+    tick=   176  st=FETCH     pc=0x0004  ir=JMP      0x00000004  flags=----  tos=0x00000007  nos=0x00000000  rtos=0x00000001
+    tick=   177  st=EXECUTE   pc=0x0005  ir=DUP      0x00000000  flags=----  tos=0x00000007  nos=0x00000000  rtos=0x00000001
+    tick=   178  st=DONE      pc=0x0005  ir=DUP      0x00000000  flags=----  tos=0x00000007  nos=0x00000007  rtos=0x00000001
+    tick=   179  st=START     pc=0x0005  ir=DUP      0x00000000  flags=----  tos=0x00000007  nos=0x00000007  rtos=0x00000001
+    tick=   180  st=FETCH     pc=0x0005  ir=DUP      0x00000000  flags=----  tos=0x00000007  nos=0x00000007  rtos=0x00000001
+    tick=   181  st=EXECUTE   pc=0x0006  ir=LOADI    0x00000000  flags=----  tos=0x00000007  nos=0x00000007  rtos=0x00000001
+    tick=   182  st=DONE      pc=0x0006  ir=LOADI    0x00000000  flags=----  tos=0x00000057  nos=0x00000007  rtos=0x00000001
+    tick=   183  st=START     pc=0x0006  ir=LOADI    0x00000000  flags=----  tos=0x00000057  nos=0x00000007  rtos=0x00000001
+    tick=   184  st=FETCH     pc=0x0006  ir=LOADI    0x00000000  flags=----  tos=0x00000057  nos=0x00000007  rtos=0x00000001
+    tick=   185  st=EXECUTE   pc=0x0007  ir=JZ       0x0000000a  flags=----  tos=0x00000057  nos=0x00000007  rtos=0x00000001
+    tick=   186  st=DONE      pc=0x0007  ir=JZ       0x0000000a  flags=----  tos=0x00000057  nos=0x00000007  rtos=0x00000001
+    tick=   187  st=START     pc=0x0007  ir=JZ       0x0000000a  flags=----  tos=0x00000057  nos=0x00000007  rtos=0x00000001
+    tick=   188  st=FETCH     pc=0x0007  ir=JZ       0x0000000a  flags=----  tos=0x00000057  nos=0x00000007  rtos=0x00000001
+    tick=   189  st=EXECUTE   pc=0x0008  ir=STORE    0x00000222  flags=----  tos=0x00000057  nos=0x00000007  rtos=0x00000001
+    tick=   190  st=DONE      pc=0x0008  ir=STORE    0x00000222  flags=----  tos=0x00000007  nos=0x00000000  rtos=0x00000001
+    tick=   191  st=START     pc=0x0008  ir=STORE    0x00000222  flags=----  tos=0x00000007  nos=0x00000000  rtos=0x00000001
+    tick=   192  st=FETCH     pc=0x0008  ir=STORE    0x00000222  flags=----  tos=0x00000007  nos=0x00000000  rtos=0x00000001
+    tick=   193  st=EXECUTE   pc=0x0009  ir=INC      0x00000000  flags=----  tos=0x00000007  nos=0x00000000  rtos=0x00000001
+    tick=   194  st=DONE      pc=0x0009  ir=INC      0x00000000  flags=----  tos=0x00000008  nos=0x00000000  rtos=0x00000001
+    tick=   195  st=START     pc=0x0009  ir=INC      0x00000000  flags=----  tos=0x00000008  nos=0x00000000  rtos=0x00000001
+    tick=   196  st=FETCH     pc=0x0009  ir=INC      0x00000000  flags=----  tos=0x00000008  nos=0x00000000  rtos=0x00000001
+    tick=   197  st=EXECUTE   pc=0x000a  ir=JMP      0x00000004  flags=----  tos=0x00000008  nos=0x00000000  rtos=0x00000001
+    tick=   198  st=DONE      pc=0x0004  ir=JMP      0x00000004  flags=----  tos=0x00000008  nos=0x00000000  rtos=0x00000001
+    tick=   199  st=START     pc=0x0004  ir=JMP      0x00000004  flags=----  tos=0x00000008  nos=0x00000000  rtos=0x00000001
+    tick=   200  st=FETCH     pc=0x0004  ir=JMP      0x00000004  flags=----  tos=0x00000008  nos=0x00000000  rtos=0x00000001

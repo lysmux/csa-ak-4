@@ -25,6 +25,13 @@ class VarDecl:
 
 
 @dataclass
+class ArrayDecl:
+    name: str
+    type_name: str
+    size: int
+
+
+@dataclass
 class FunDecl:
     name: str
     params: list[tuple[str, str]]
@@ -74,6 +81,13 @@ class ReturnStmt:
 
 
 @dataclass
+class IndexAssignStmt:
+    name: str
+    index: Expr
+    value: Expr
+
+
+@dataclass
 class BinaryOp:
     op: str
     left: Expr
@@ -99,6 +113,12 @@ class Call:
 
 
 @dataclass
+class IndexExpr:
+    name: str
+    index: Expr
+
+
+@dataclass
 class Ident:
     name: str
 
@@ -118,11 +138,23 @@ class Bool:
     value: bool
 
 
-Statement = ConstDecl | VarDecl | FunDecl | InterruptDecl | IfStmt | WhileStmt | AssignStmt | ExprStmt | ReturnStmt
-Expr = BinaryOp | UnaryOp | PostfixOp | Call | Ident | Number | String | Bool
+Statement = (
+    ConstDecl
+    | VarDecl
+    | ArrayDecl
+    | FunDecl
+    | InterruptDecl
+    | IfStmt
+    | WhileStmt
+    | AssignStmt
+    | IndexAssignStmt
+    | ExprStmt
+    | ReturnStmt
+)
+Expr = BinaryOp | UnaryOp | PostfixOp | Call | IndexExpr | Ident | Number | String | Bool
 
 
-def print_ast(node: object, *, file: "_sys.IO[str]" = _sys.stdout) -> None:
+def print_ast(node: object, *, file: _sys.IO[str] = _sys.stdout) -> None:
     lines: list[str] = []
     _ast_collect(node, "", "", lines)
     print("\n".join(lines), file=file)

@@ -1,5 +1,4 @@
 import pytest
-
 from app.translator.lexer import Lexer, LexerError, Token, TokenType
 
 

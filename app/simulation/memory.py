@@ -23,7 +23,7 @@ class Memory:
         if len(data) > self.capacity:
             logger.warning("Data size exceeds the memory capacity %d. Excess will be discarded", self.capacity)
 
-        self._memory[:min(self.capacity, len(data))] = data[: self.capacity]
+        self._memory[: min(self.capacity, len(data))] = data[: self.capacity]
 
     def _validate_address(self, address: int) -> None:
         if address < 0 or address > self.capacity:

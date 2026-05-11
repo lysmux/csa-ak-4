@@ -1,16 +1,20 @@
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
 
+from app.isa.consts import MAX_SIGNED, MIN_SIGNED, WORD_MASK
 from app.isa.flags import Flags, ProgramState
 from app.isa.instruction import Instruction
 from app.isa.opcode import Opcode
 from app.isa.state import State
+from app.simulation.alu import _signed
 from app.simulation.data_path import DataPath
 from app.simulation.memory import Memory
 from app.simulation.mux import PCMux, RStackMux
 from app.simulation.stack import Stack
 
 logger = logging.getLogger(__name__)
+
 
 @dataclass(frozen=True)
 class CUSnapshot:
@@ -33,13 +37,14 @@ class CUSnapshot:
     return_stack: list[int]
     r_tos: int
 
+
 class ControlUnit:
     def __init__(
-            self,
-            data_path: DataPath,
-            instr_memory: Memory,
-            return_stack: Stack,
-            vector_table: dict[int, int] | None = None,
+        self,
+        data_path: DataPath,
+        instr_memory: Memory,
+        return_stack: Stack,
+        vector_table: dict[int, int] | None = None,
     ) -> None:
         self._data_path = data_path
         self._instr_memory = instr_memory
@@ -56,7 +61,6 @@ class ControlUnit:
         self._state = State.FETCH
 
         self._tick = 0
-
 
     @property
     def current_tick(self) -> int:
@@ -86,7 +90,7 @@ class ControlUnit:
             tos=self._data_path.stack.tos,
             nos=self._data_path.stack.nos,
             return_stack=self._return_stack.stack,
-            r_tos=self._return_stack.tos
+            r_tos=self._return_stack.tos,
         )
 
     def latch_pc(self, mux: PCMux) -> None:
@@ -221,7 +225,6 @@ class ControlUnit:
             if cnt != 0:
                 self.latch_pc(PCMux.ADDRESS)
 
-
         if self._instr.opcode is Opcode.EI:
             self._program_state |= ProgramState.IE
         if self._instr.opcode is Opcode.DI:
@@ -231,28 +234,43 @@ class ControlUnit:
             self._data_path.flags = self._return_stack.pop()
             self._program_state |= ProgramState.IE
 
+        if self._instr.opcode is Opcode.ADDC:
+            right = self._data_path.stack.pop()
+            left = self._data_path.stack.pop()
+            carry = 1 if Flags.C in self._data_path.flags else 0
+            raw = left + right + carry
+            value = raw & WORD_MASK
+            flags = Flags.nz(value)
+            if raw > WORD_MASK:
+                flags |= Flags.C
+            if (
+                _signed(left) + _signed(right) + carry > MAX_SIGNED
+                or _signed(left) + _signed(right) + carry < MIN_SIGNED
+            ):
+                flags |= Flags.V
+            self._data_path.flags = flags
+            self._data_path.stack.push(value)
+
         if self._instr.opcode is Opcode.CMP:
             self._data_path.cmp()
 
         if self._data_path.is_alu_binary_opcode(self._instr.opcode):
+            right = self._data_path.stack.pop()
+            left = self._data_path.stack.pop()
             result = self._data_path.perform_alu(
                 opcode=self._instr.opcode,
-                left=self._data_path.stack.pop(),
-                right=self._data_path.stack.pop(),
+                left=left,
+                right=right,
             )
             self._data_path.stack.push(result)
 
         if self._data_path.is_alu_unary_opcode(self._instr.opcode):
-            result = self._data_path.perform_alu(
-                opcode=self._instr.opcode,
-                left=self._data_path.stack.pop()
-            )
+            result = self._data_path.perform_alu(opcode=self._instr.opcode, left=self._data_path.stack.pop())
             self._data_path.stack.push(result)
 
         self._state = State.DONE
 
     def execute_interrupt(self) -> None:
-        assert self._pending_vector is not None
         self._return_stack.push(int(self._data_path.flags))
         self._return_stack.push(self._pc)
         self._program_state &= ~ProgramState.IE
@@ -267,10 +285,15 @@ class ControlUnit:
 
         self.latch_pc(PCMux.ADDRESS)
 
-
-    def run(self, limit: int | None = None) -> None:
+    def run(
+        self,
+        limit: int | None = None,
+        on_tick: "Callable[[ControlUnit], None] | None" = None,
+    ) -> None:
         while self._state is not State.HALT:
             if limit is not None and self._tick >= limit:
                 logger.warning("Tick limit %d reached, halting", limit)
                 return
             self.tick()
+            if on_tick is not None:
+                on_tick(self)

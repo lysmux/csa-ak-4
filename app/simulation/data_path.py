@@ -7,12 +7,7 @@ from app.simulation.stack import Stack
 
 
 class DataPath:
-    def __init__(
-            self,
-            memory: Memory,
-            stack: Stack,
-            io_map: dict[int, Device]
-    ) -> None:
+    def __init__(self, memory: Memory, stack: Stack, io_map: dict[int, Device]) -> None:
         self.memory = memory
         self.stack = stack
         self.io_map = io_map

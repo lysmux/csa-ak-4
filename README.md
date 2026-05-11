@@ -22,4 +22,3 @@ alg | stack | harv | hw | tick | binary | trap | mem | cstr | prob1 | superscala
 # Документация
 * [ISA](docs/ISA.md) — система команд: опкоды, регистры, флаги
 * [IO](docs/IO.md) — организация ввода-вывода
-* [SIGNALS](docs/SIGNALS.md) — потактовое выполнение команд

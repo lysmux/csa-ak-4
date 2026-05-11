@@ -4,8 +4,7 @@ from tests.shared import run_simulation
 
 
 def test_factorial():
-    """
-    Computes 8! = 40320 recursively.
+    """Computes 8! = 40320 recursively.
 
     Calling convention: n on TOS before CALL, result on TOS after RET.
     CMP peeks at TOS and NOS, sets FLAGS = NOS-TOS, stack unchanged.

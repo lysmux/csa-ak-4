@@ -1,11 +1,9 @@
 import pytest
-
 from app.isa.instruction import Instruction
 from app.isa.opcode import Opcode
 from app.translator.codegen import CodeGen, CodeGenError, CompiledProgram
 from app.translator.lexer import Lexer
 from app.translator.parser import Parser
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -461,14 +459,14 @@ def test_full_example_data_count():
 # ---------------------------------------------------------------------------
 
 def test_undefined_var_raises():
-    from app.translator.nodes import Program, ExprStmt, Ident
+    from app.translator.nodes import ExprStmt, Ident, Program
     prog = Program([ExprStmt(Ident("unknown"))])
     with pytest.raises(CodeGenError, match="undefined variable"):
         CodeGen().generate(prog)
 
 
 def test_undefined_function_raises():
-    from app.translator.nodes import Program, ExprStmt, Call
+    from app.translator.nodes import Call, ExprStmt, Program
     prog = Program([ExprStmt(Call("no_such_fun", []))])
     with pytest.raises(CodeGenError, match="undefined function"):
         CodeGen().generate(prog)

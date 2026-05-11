@@ -1,10 +1,22 @@
 import pytest
-
 from app.translator.lexer import Lexer
 from app.translator.nodes import (
-    AssignStmt, BinaryOp, Block, Bool, Call, ConstDecl,
-    FunDecl, Ident, IfStmt, Number, PostfixOp,
-    Program, String, UnaryOp, VarDecl, WhileStmt,
+    AssignStmt,
+    BinaryOp,
+    Block,
+    Bool,
+    Call,
+    ConstDecl,
+    FunDecl,
+    Ident,
+    IfStmt,
+    Number,
+    PostfixOp,
+    Program,
+    String,
+    UnaryOp,
+    VarDecl,
+    WhileStmt,
 )
 from app.translator.parser import ParseError, Parser
 

@@ -4,24 +4,43 @@ from dataclasses import dataclass
 from typing import Never
 
 from app.translator.nodes import (
-    AssignStmt, BinaryOp, Block, Bool, Call, ConstDecl,
-    ExprStmt, FunDecl, Ident, IfStmt, InterruptDecl, Number, PostfixOp,
-    Program, ReturnStmt, String, UnaryOp, VarDecl, WhileStmt,
+    ArrayDecl,
+    AssignStmt,
+    BinaryOp,
+    Block,
+    Bool,
+    Call,
+    ConstDecl,
+    ExprStmt,
+    FunDecl,
+    Ident,
+    IfStmt,
+    IndexAssignStmt,
+    IndexExpr,
+    InterruptDecl,
+    Number,
+    PostfixOp,
+    Program,
+    ReturnStmt,
+    String,
+    UnaryOp,
+    VarDecl,
+    WhileStmt,
 )
 
-_NUMERIC   = frozenset({"byte", "int"})
+_NUMERIC = frozenset({"byte", "int"})
 _ARITH_OPS = frozenset({"PLUS", "MINUS", "STAR", "SLASH"})
-_CMP_OPS   = frozenset({"EQUAL", "NOT_EQUAL", "LESS_THAN", "GREATER_THAN",
-                         "LESS_THAN_OR_EQUAL", "GREATER_THAN_OR_EQUAL"})
+_CMP_OPS = frozenset({"EQUAL", "NOT_EQUAL", "LESS_THAN", "GREATER_THAN", "LESS_THAN_OR_EQUAL", "GREATER_THAN_OR_EQUAL"})
 _LOGIC_OPS = frozenset({"AND", "OR", "XOR"})
-_INCR_OPS  = frozenset({"INCREMENT", "DECREMENT"})
+_INCR_OPS = frozenset({"INCREMENT", "DECREMENT"})
 
 # Встроенные функции — допустимы без объявления, arity=None означает любое число аргументов
 _BUILTINS: dict[str, int | None] = {
-    "print":              None,
-    "println":            None,
-    "getchar":            0,
-    "enable_interrupts":  0,
+    "print": None,
+    "println": None,
+    "getchar": None,
+    "addc": 2,
+    "enable_interrupts": 0,
     "disable_interrupts": 0,
 }
 
@@ -30,13 +49,14 @@ _BUILTINS: dict[str, int | None] = {
 # Symbol table
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Symbol:
     name: str
-    type_name: str      # 'byte', 'int', 'bool', 'string', 'fun'
+    type_name: str  # 'byte', 'int', 'bool', 'string', 'fun'
     mutable: bool
-    params: list[tuple[str, str]] | None = None   # только для функций
-    return_type: str | None = None                 # только для функций
+    params: list[tuple[str, str]] | None = None  # только для функций
+    return_type: str | None = None  # только для функций
 
 
 class Scope:
@@ -64,6 +84,7 @@ class Scope:
 # Errors
 # ---------------------------------------------------------------------------
 
+
 class SemanticError(Exception): ...
 
 
@@ -71,12 +92,21 @@ class SemanticError(Exception): ...
 # Analyzer
 # ---------------------------------------------------------------------------
 
+
 class Analyzer:
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        output_devices: set[str] | None = None,
+        input_devices: set[str] | None = None,
+    ) -> None:
         self._errors: list[SemanticError] = []
         self._scope = Scope()
         self._return_type: str | None = None
         self._in_interrupt_handler = False
+        for label in output_devices or set():
+            self._scope.define(Symbol(label, "output_device", mutable=False))
+        for label in input_devices or set():
+            self._scope.define(Symbol(label, "input_device", mutable=False))
 
     def analyze(self, program: Program) -> list[SemanticError]:
         self._visit(program)
@@ -88,7 +118,6 @@ class Analyzer:
         self._scope = Scope(self._scope)
 
     def _pop(self) -> None:
-        assert self._scope.parent is not None
         self._scope = self._scope.parent
 
     def _define(self, sym: Symbol) -> None:
@@ -122,6 +151,16 @@ class Analyzer:
                 vtype = self._visit(value)
                 self._check_compat(t, vtype, f"var '{name}'")
                 self._define(Symbol(name, t, mutable=True))
+
+            case ArrayDecl(name=name, type_name=t, size=_):
+                self._define(Symbol(name, "array", mutable=True))
+
+            case IndexAssignStmt(name=name, index=index, value=value):
+                sym = self._resolve(name)
+                if sym is not None and sym.type_name != "array":
+                    self._err(f"'{name}' is not an array")
+                self._visit(index)
+                self._visit(value)
 
             case FunDecl(name=name, params=params, body=body, return_type=rt):
                 self._define(Symbol(name, "fun", mutable=False, params=params, return_type=rt))
@@ -163,7 +202,7 @@ class Analyzer:
                         self._visit(else_branch)
                         self._pop()
                     else:
-                        self._visit(else_branch)   # IfStmt управляет своими скоупами сам
+                        self._visit(else_branch)  # IfStmt управляет своими скоупами сам
 
             case WhileStmt(condition=cond, body=body):
                 self._visit(cond)
@@ -229,7 +268,25 @@ class Analyzer:
 
             case Call(name=name, args=args):
                 fun_sym: Symbol | None = None
+                visit_args = args
                 if name in _BUILTINS:
+                    if name in {"print", "println"} and args and isinstance(args[0], Ident):
+                        first_sym = self._scope.resolve(args[0].name)
+                        if first_sym is not None and first_sym.type_name == "output_device":
+                            visit_args = args[1:]
+                    elif name == "getchar":
+                        if len(args) == 0:
+                            if not self._in_interrupt_handler:
+                                self._err("getchar() without a label can only be used in an interrupt handler")
+                            visit_args = []
+                        elif len(args) == 1 and isinstance(args[0], Ident):
+                            first_sym = self._scope.resolve(args[0].name)
+                            if first_sym is None or first_sym.type_name != "input_device":
+                                self._err(f"'{args[0].name}' is not an input device label")
+                            visit_args = []
+                        else:
+                            self._err("getchar expects 0 or 1 device-label arg")
+                            visit_args = []
                     expected = _BUILTINS[name]
                     if expected is not None and len(args) != expected:
                         self._err(f"'{name}' expects {expected} arg(s), got {len(args)}")
@@ -241,15 +298,26 @@ class Analyzer:
                         elif fun_sym.type_name != "fun":
                             self._err(f"'{name}' is not a function")
                         elif fun_sym.params is not None and len(args) != len(fun_sym.params):
-                            self._err(
-                                f"'{name}' expects {len(fun_sym.params)} arg(s), got {len(args)}"
-                            )
-                for arg in args:
+                            self._err(f"'{name}' expects {len(fun_sym.params)} arg(s), got {len(args)}")
+                for arg in visit_args:
                     self._visit(arg)
                 return fun_sym.return_type if fun_sym else None
 
+            case IndexExpr(name=name, index=index):
+                sym = self._resolve(name)
+                if sym is not None and sym.type_name != "array":
+                    self._err(f"'{name}' is not an array")
+                self._visit(index)
+                return "int"
+
             case Ident(name=name):
                 sym = self._resolve(name)
+                if sym is not None and sym.type_name == "output_device":
+                    self._err(f"output device label '{name}' can only appear as first arg of print/println")
+                if sym is not None and sym.type_name == "input_device":
+                    self._err(f"input device label '{name}' can only appear as arg of getchar")
+                if sym is not None and sym.type_name == "array":
+                    self._err(f"array '{name}' must be indexed with []")
                 return sym.type_name if sym else None
 
             case Number():

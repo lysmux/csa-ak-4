@@ -90,7 +90,6 @@ class Lexer:
         "false": TokenType.FALSE,
         "return": TokenType.RETURN,
         "interrupt": TokenType.INTERRUPT,
-
         "int": TokenType.TYPE,
         "byte": TokenType.TYPE,
         "bool": TokenType.TYPE,
@@ -173,8 +172,17 @@ class Lexer:
 
         self.error(f"Unexpected character {char!r}")
 
-
     def scan_number(self) -> Token:
+        line, col = self.line, self.column
+        if self.peek() == "0" and self.peek(1) in ("x", "X"):
+            chars = ["0", self.peek(1)]
+            self.advance()
+            self.advance()
+            while (c := self.current_char) is not None and (c.isdigit() or c in "abcdefABCDEF"):
+                chars.append(c)
+                self.advance()
+            value = str(int("".join(chars), 16))
+            return Token(TokenType.NUMBER, value, line, col)
         return self.scan_while(
             TokenType.NUMBER,
             lambda c: c.isdigit(),
@@ -189,6 +197,16 @@ class Lexer:
         token.type = self.KEYWORDS.get(token.value, TokenType.IDENT)
         return token
 
+    ESCAPES: dict[str, str] = {
+        "n": "\n",
+        "t": "\t",
+        "r": "\r",
+        "0": "\0",
+        "\\": "\\",
+        '"': '"',
+        "'": "'",
+    }
+
     def scan_string(self) -> Token:
         line, col = self.line, self.column
 
@@ -197,6 +215,19 @@ class Lexer:
         chars: list[str] = []
 
         while (ch := self.current_char) is not None and ch != '"':
+            if ch == "\\":
+                esc_line, esc_col = self.line, self.column
+                self.advance()
+                esc = self.current_char
+                if esc is None:
+                    self.error_at("Unterminated escape in string", line, col)
+                mapped = self.ESCAPES.get(esc)
+                if mapped is None:
+                    self.error_at(f"Unknown escape sequence '\\{esc}'", esc_line, esc_col)
+                chars.append(mapped)
+                self.advance()
+                continue
+
             chars.append(ch)
             self.advance()
 
@@ -241,10 +272,7 @@ class Lexer:
         line, col = self.line, self.column
         chars: list[str] = []
 
-        while (
-            (char := self.current_char) is not None
-            and predicate(char)
-        ):
+        while (char := self.current_char) is not None and predicate(char):
             chars.append(char)
             self.advance()
 

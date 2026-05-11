@@ -1,5 +1,4 @@
 import pytest
-
 from app.translator.analyzer import Analyzer, SemanticError
 from app.translator.lexer import Lexer
 from app.translator.parser import Parser

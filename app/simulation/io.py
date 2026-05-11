@@ -26,6 +26,22 @@ class CharOutput(Device):
         return None
 
 
+class IntOutput(Device):
+    def __init__(self) -> None:
+        self.buffer: list[int] = []
+
+    @property
+    def string(self) -> str:
+        return " ".join(str(v) for v in self.buffer)
+
+    def read(self) -> int: ...
+    def write(self, value: int) -> None:
+        self.buffer.append(value)
+
+    def tick(self, current_tick: int) -> int | None:
+        return None
+
+
 class CharInput(Device):
     def __init__(self, schedule: list[tuple[int, str]], vector: int) -> None:
         self._schedule: list[tuple[int, str]] = sorted(schedule, key=lambda p: p[0])

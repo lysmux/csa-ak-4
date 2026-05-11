@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Literal
 
 import yaml
 from pydantic import BaseModel, Field
@@ -14,19 +15,20 @@ class StackSize(BaseModel):
     data: int = 1000
 
 
-class CharOutputConfig(BaseModel):
-    address: int = 0x222
+class OutputDeviceConfig(BaseModel):
+    kind: Literal["char", "int"] = "char"
+    address: int
 
 
-class CharInputConfig(BaseModel):
-    address: int = 0x223
-    vector: int = 0
+class InputDeviceConfig(BaseModel):
+    address: int
+    vector: int
     schedule: list[tuple[int, str]] = Field(default_factory=list)
 
 
 class IOConfig(BaseModel):
-    char_output: CharOutputConfig = Field(default_factory=CharOutputConfig)
-    char_input: CharInputConfig | None = None
+    outputs: dict[str, OutputDeviceConfig] = Field(default_factory=dict)
+    inputs: dict[str, InputDeviceConfig] = Field(default_factory=dict)
 
 
 class Config(BaseModel):

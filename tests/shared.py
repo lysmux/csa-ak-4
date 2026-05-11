@@ -1,9 +1,7 @@
 from collections.abc import Callable
 
-import pytest
-
 from app.isa.instruction import Instruction
-from app.simulation.control_unit import CUSnapshot, ControlUnit
+from app.simulation.control_unit import ControlUnit, CUSnapshot
 from app.simulation.data_path import DataPath
 from app.simulation.memory import Memory
 from app.simulation.stack import Stack
@@ -26,6 +24,7 @@ def run_simulation(
     data_path = DataPath(
         memory=data_memory,
         stack=data_stack,
+        io_map={},
     )
 
     cu = ControlUnit(

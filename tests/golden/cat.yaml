@@ -1,0 +1,153 @@
+name: cat
+source: |-
+  interrupt 0 on_char() {
+      print(char_output, getchar());
+  }
+
+  fun main() {
+      enable_interrupts();
+      while (true) {}
+  }
+config:
+  limit: 2000
+  memory_size:
+    instruction: 500
+    data: 500
+  stack_size:
+    ret: 100
+    data: 100
+  io:
+    outputs:
+      char_output:
+        kind: char
+        address: 546
+      int_output:
+        kind: int
+        address: 548
+    inputs:
+      stdin:
+        address: 547
+        vector: 0
+        schedule:
+        - - 1
+          - H
+        - - 50
+          - i
+        - - 100
+          - '
+
+            '
+max_trace: 60
+expected_output:
+  char_output: |
+    Hi
+  int_output: []
+ast: |
+  Program
+  └─ body:
+     ├─ [0] InterruptDecl  vector=0  name='on_char'
+     │  └─ body: Block
+     │     └─ body:
+     │        └─ [0] ExprStmt
+     │           └─ expr: Call  name='print'
+     │              └─ args:
+     │                 ├─ [0] Ident  name='char_output'
+     │                 └─ [1] Call  name='getchar'  args=[]
+     └─ [1] FunDecl  name='main'  params=[]  return_type=None
+        └─ body: Block
+           └─ body:
+              ├─ [0] ExprStmt
+              │  └─ expr: Call  name='enable_interrupts'  args=[]
+              └─ [1] WhileStmt
+                 ├─ condition: Bool  value=True
+                 └─ body: Block  body=[]
+machine_code: |-
+  Instructions:
+    0x0000 - 0x6100000009 - CALL 0x00000009
+    0x0001 - 0x200000000 - HALT 0x00000000
+    0x0002 - 0x6000000008 - JMP 0x00000008
+    0x0003 - 0x2000000223 - LOAD 0x00000223
+    0x0004 - 0x2100000222 - STORE 0x00000222
+    0x0005 - 0x1000000000 - PUSH 0x00000000
+    0x0006 - 0x1200000000 - DROP 0x00000000
+    0x0007 - 0x7200000000 - RTI 0x00000000
+    0x0008 - 0x6000000014 - JMP 0x00000014
+    0x0009 - 0x7000000000 - EI 0x00000000
+    0x000a - 0x1000000000 - PUSH 0x00000000
+    0x000b - 0x1200000000 - DROP 0x00000000
+    0x000c - 0x1000000001 - PUSH 0x00000001
+    0x000d - 0x1000000000 - PUSH 0x00000000
+    0x000e - 0x3400000000 - CMP 0x00000000
+    0x000f - 0x1200000000 - DROP 0x00000000
+    0x0010 - 0x1200000000 - DROP 0x00000000
+    0x0011 - 0x5000000013 - JZ 0x00000013
+    0x0012 - 0x600000000c - JMP 0x0000000c
+    0x0013 - 0x6200000000 - RET 0x00000000
+
+  Data:
+
+  Interrupt handlers:
+    vector 0 -> 0x0003
+trace:
+  total_ticks: 2000
+  lines: |-
+    tick=     1  st=EXECUTE   pc=0x0001  ir=CALL     0x00000009  flags=----  tos=0x00000000  nos=0x00000000  rtos=0x00000000
+    tick=     2  st=DONE      pc=0x0009  ir=CALL     0x00000009  flags=----  tos=0x00000000  nos=0x00000000  rtos=0x00000001
+    tick=     3  st=START     pc=0x0009  ir=CALL     0x00000009  flags=----  tos=0x00000000  nos=0x00000000  rtos=0x00000001
+    tick=     4  st=FETCH     pc=0x0009  ir=CALL     0x00000009  flags=----  tos=0x00000000  nos=0x00000000  rtos=0x00000001
+    tick=     5  st=EXECUTE   pc=0x000a  ir=EI       0x00000000  flags=----  tos=0x00000000  nos=0x00000000  rtos=0x00000001
+    tick=     6  st=DONE      pc=0x000a  ir=EI       0x00000000  flags=----  tos=0x00000000  nos=0x00000000  rtos=0x00000001
+    tick=     7  st=START     pc=0x000a  ir=EI       0x00000000  flags=----  tos=0x00000000  nos=0x00000000  rtos=0x00000001
+    tick=     8  st=INTERRUPT pc=0x000a  ir=EI       0x00000000  flags=----  tos=0x00000000  nos=0x00000000  rtos=0x00000001
+    tick=     9  st=DONE      pc=0x0003  ir=EI       0x00000000  flags=----  tos=0x00000000  nos=0x00000000  rtos=0x0000000a
+    tick=    10  st=START     pc=0x0003  ir=EI       0x00000000  flags=----  tos=0x00000000  nos=0x00000000  rtos=0x0000000a
+    tick=    11  st=FETCH     pc=0x0003  ir=EI       0x00000000  flags=----  tos=0x00000000  nos=0x00000000  rtos=0x0000000a
+    tick=    12  st=EXECUTE   pc=0x0004  ir=LOAD     0x00000223  flags=----  tos=0x00000000  nos=0x00000000  rtos=0x0000000a
+    tick=    13  st=DONE      pc=0x0004  ir=LOAD     0x00000223  flags=----  tos=0x00000048  nos=0x00000000  rtos=0x0000000a
+    tick=    14  st=START     pc=0x0004  ir=LOAD     0x00000223  flags=----  tos=0x00000048  nos=0x00000000  rtos=0x0000000a
+    tick=    15  st=FETCH     pc=0x0004  ir=LOAD     0x00000223  flags=----  tos=0x00000048  nos=0x00000000  rtos=0x0000000a
+    tick=    16  st=EXECUTE   pc=0x0005  ir=STORE    0x00000222  flags=----  tos=0x00000048  nos=0x00000000  rtos=0x0000000a
+    tick=    17  st=DONE      pc=0x0005  ir=STORE    0x00000222  flags=----  tos=0x00000000  nos=0x00000000  rtos=0x0000000a
+    tick=    18  st=START     pc=0x0005  ir=STORE    0x00000222  flags=----  tos=0x00000000  nos=0x00000000  rtos=0x0000000a
+    tick=    19  st=FETCH     pc=0x0005  ir=STORE    0x00000222  flags=----  tos=0x00000000  nos=0x00000000  rtos=0x0000000a
+    tick=    20  st=EXECUTE   pc=0x0006  ir=PUSH     0x00000000  flags=----  tos=0x00000000  nos=0x00000000  rtos=0x0000000a
+    tick=    21  st=DONE      pc=0x0006  ir=PUSH     0x00000000  flags=-Z--  tos=0x00000000  nos=0x00000000  rtos=0x0000000a
+    tick=    22  st=START     pc=0x0006  ir=PUSH     0x00000000  flags=-Z--  tos=0x00000000  nos=0x00000000  rtos=0x0000000a
+    tick=    23  st=FETCH     pc=0x0006  ir=PUSH     0x00000000  flags=-Z--  tos=0x00000000  nos=0x00000000  rtos=0x0000000a
+    tick=    24  st=EXECUTE   pc=0x0007  ir=DROP     0x00000000  flags=-Z--  tos=0x00000000  nos=0x00000000  rtos=0x0000000a
+    tick=    25  st=DONE      pc=0x0007  ir=DROP     0x00000000  flags=-Z--  tos=0x00000000  nos=0x00000000  rtos=0x0000000a
+    tick=    26  st=START     pc=0x0007  ir=DROP     0x00000000  flags=-Z--  tos=0x00000000  nos=0x00000000  rtos=0x0000000a
+    tick=    27  st=FETCH     pc=0x0007  ir=DROP     0x00000000  flags=-Z--  tos=0x00000000  nos=0x00000000  rtos=0x0000000a
+    tick=    28  st=EXECUTE   pc=0x0008  ir=RTI      0x00000000  flags=-Z--  tos=0x00000000  nos=0x00000000  rtos=0x0000000a
+    tick=    29  st=DONE      pc=0x000a  ir=RTI      0x00000000  flags=----  tos=0x00000000  nos=0x00000000  rtos=0x00000001
+    tick=    30  st=START     pc=0x000a  ir=RTI      0x00000000  flags=----  tos=0x00000000  nos=0x00000000  rtos=0x00000001
+    tick=    31  st=FETCH     pc=0x000a  ir=RTI      0x00000000  flags=----  tos=0x00000000  nos=0x00000000  rtos=0x00000001
+    tick=    32  st=EXECUTE   pc=0x000b  ir=PUSH     0x00000000  flags=----  tos=0x00000000  nos=0x00000000  rtos=0x00000001
+    tick=    33  st=DONE      pc=0x000b  ir=PUSH     0x00000000  flags=-Z--  tos=0x00000000  nos=0x00000000  rtos=0x00000001
+    tick=    34  st=START     pc=0x000b  ir=PUSH     0x00000000  flags=-Z--  tos=0x00000000  nos=0x00000000  rtos=0x00000001
+    tick=    35  st=FETCH     pc=0x000b  ir=PUSH     0x00000000  flags=-Z--  tos=0x00000000  nos=0x00000000  rtos=0x00000001
+    tick=    36  st=EXECUTE   pc=0x000c  ir=DROP     0x00000000  flags=-Z--  tos=0x00000000  nos=0x00000000  rtos=0x00000001
+    tick=    37  st=DONE      pc=0x000c  ir=DROP     0x00000000  flags=-Z--  tos=0x00000000  nos=0x00000000  rtos=0x00000001
+    tick=    38  st=START     pc=0x000c  ir=DROP     0x00000000  flags=-Z--  tos=0x00000000  nos=0x00000000  rtos=0x00000001
+    tick=    39  st=FETCH     pc=0x000c  ir=DROP     0x00000000  flags=-Z--  tos=0x00000000  nos=0x00000000  rtos=0x00000001
+    tick=    40  st=EXECUTE   pc=0x000d  ir=PUSH     0x00000001  flags=-Z--  tos=0x00000000  nos=0x00000000  rtos=0x00000001
+    tick=    41  st=DONE      pc=0x000d  ir=PUSH     0x00000001  flags=----  tos=0x00000001  nos=0x00000000  rtos=0x00000001
+    tick=    42  st=START     pc=0x000d  ir=PUSH     0x00000001  flags=----  tos=0x00000001  nos=0x00000000  rtos=0x00000001
+    tick=    43  st=FETCH     pc=0x000d  ir=PUSH     0x00000001  flags=----  tos=0x00000001  nos=0x00000000  rtos=0x00000001
+    tick=    44  st=EXECUTE   pc=0x000e  ir=PUSH     0x00000000  flags=----  tos=0x00000001  nos=0x00000000  rtos=0x00000001
+    tick=    45  st=DONE      pc=0x000e  ir=PUSH     0x00000000  flags=-Z--  tos=0x00000000  nos=0x00000001  rtos=0x00000001
+    tick=    46  st=START     pc=0x000e  ir=PUSH     0x00000000  flags=-Z--  tos=0x00000000  nos=0x00000001  rtos=0x00000001
+    tick=    47  st=FETCH     pc=0x000e  ir=PUSH     0x00000000  flags=-Z--  tos=0x00000000  nos=0x00000001  rtos=0x00000001
+    tick=    48  st=EXECUTE   pc=0x000f  ir=CMP      0x00000000  flags=-Z--  tos=0x00000000  nos=0x00000001  rtos=0x00000001
+    tick=    49  st=DONE      pc=0x000f  ir=CMP      0x00000000  flags=----  tos=0x00000000  nos=0x00000001  rtos=0x00000001
+    tick=    50  st=START     pc=0x000f  ir=CMP      0x00000000  flags=----  tos=0x00000000  nos=0x00000001  rtos=0x00000001
+    tick=    51  st=INTERRUPT pc=0x000f  ir=CMP      0x00000000  flags=----  tos=0x00000000  nos=0x00000001  rtos=0x00000001
+    tick=    52  st=DONE      pc=0x0003  ir=CMP      0x00000000  flags=----  tos=0x00000000  nos=0x00000001  rtos=0x0000000f
+    tick=    53  st=START     pc=0x0003  ir=CMP      0x00000000  flags=----  tos=0x00000000  nos=0x00000001  rtos=0x0000000f
+    tick=    54  st=FETCH     pc=0x0003  ir=CMP      0x00000000  flags=----  tos=0x00000000  nos=0x00000001  rtos=0x0000000f
+    tick=    55  st=EXECUTE   pc=0x0004  ir=LOAD     0x00000223  flags=----  tos=0x00000000  nos=0x00000001  rtos=0x0000000f
+    tick=    56  st=DONE      pc=0x0004  ir=LOAD     0x00000223  flags=----  tos=0x00000069  nos=0x00000000  rtos=0x0000000f
+    tick=    57  st=START     pc=0x0004  ir=LOAD     0x00000223  flags=----  tos=0x00000069  nos=0x00000000  rtos=0x0000000f
+    tick=    58  st=FETCH     pc=0x0004  ir=LOAD     0x00000223  flags=----  tos=0x00000069  nos=0x00000000  rtos=0x0000000f
+    tick=    59  st=EXECUTE   pc=0x0005  ir=STORE    0x00000222  flags=----  tos=0x00000069  nos=0x00000000  rtos=0x0000000f
+    tick=    60  st=DONE      pc=0x0005  ir=STORE    0x00000222  flags=----  tos=0x00000000  nos=0x00000001  rtos=0x0000000f

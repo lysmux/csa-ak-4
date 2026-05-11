@@ -1,6 +1,6 @@
-
 from app.translator.lexer import Lexer, Token, TokenType
 from app.translator.nodes import (
+    ArrayDecl,
     AssignStmt,
     BinaryOp,
     Block,
@@ -12,6 +12,8 @@ from app.translator.nodes import (
     FunDecl,
     Ident,
     IfStmt,
+    IndexAssignStmt,
+    IndexExpr,
     InterruptDecl,
     Number,
     PostfixOp,
@@ -26,19 +28,19 @@ from app.translator.nodes import (
 )
 
 _INFIX_BP: dict[TokenType, int] = {
-    TokenType.OR:                    1,
-    TokenType.AND:                   2,
-    TokenType.XOR:                   3,
-    TokenType.EQUAL:                 4,
-    TokenType.NOT_EQUAL:             4,
-    TokenType.LESS_THAN:             5,
-    TokenType.GREATER_THAN:          5,
-    TokenType.LESS_THAN_OR_EQUAL:    5,
+    TokenType.OR: 1,
+    TokenType.AND: 2,
+    TokenType.XOR: 3,
+    TokenType.EQUAL: 4,
+    TokenType.NOT_EQUAL: 4,
+    TokenType.LESS_THAN: 5,
+    TokenType.GREATER_THAN: 5,
+    TokenType.LESS_THAN_OR_EQUAL: 5,
     TokenType.GREATER_THAN_OR_EQUAL: 5,
-    TokenType.PLUS:                  6,
-    TokenType.MINUS:                 6,
-    TokenType.STAR:                  7,
-    TokenType.SLASH:                 7,
+    TokenType.PLUS: 6,
+    TokenType.MINUS: 6,
+    TokenType.STAR: 7,
+    TokenType.SLASH: 7,
 }
 
 _POSTFIX_BP: dict[TokenType, int] = {
@@ -85,8 +87,7 @@ class Parser:
             raise ParseError(msg)
         if tok.type != expected:
             msg = (
-                f"expected {expected.name}, got {tok.type.name!r} {tok.value!r} "
-                f"at line {tok.line}, column {tok.column}"
+                f"expected {expected.name}, got {tok.type.name!r} {tok.value!r} at line {tok.line}, column {tok.column}"
             )
             raise ParseError(msg)
         return self.advance()
@@ -98,10 +99,7 @@ class Parser:
             msg = "expected type name, got end of input"
             raise ParseError(msg)
         if tok.type not in (TokenType.IDENT, TokenType.TYPE):
-            msg = (
-                f"expected type name, got {tok.type.name!r} {tok.value!r} "
-                f"at line {tok.line}, column {tok.column}"
-            )
+            msg = f"expected type name, got {tok.type.name!r} {tok.value!r} at line {tok.line}, column {tok.column}"
             raise ParseError(msg)
         return self.advance()
 
@@ -138,6 +136,8 @@ class Parser:
                 return self.parse_while_stmt()
             case TokenType.IDENT if self.peek(1) and self.peek(1).type == TokenType.ASSIGN:
                 return self.parse_assign_stmt()
+            case TokenType.IDENT if self.peek(1) and self.peek(1).type == TokenType.LBRACKET:
+                return self.parse_index_assign_stmt()
             case _:
                 return self.parse_expr_stmt()
 
@@ -151,11 +151,16 @@ class Parser:
         self.eat(TokenType.SEMICOLON)
         return ConstDecl(name=name, type_name=type_name, value=value)
 
-    def parse_var_decl(self) -> VarDecl:
+    def parse_var_decl(self) -> VarDecl | ArrayDecl:
         self.eat(TokenType.VAR)
         name = self.eat(TokenType.IDENT).value
         self.eat(TokenType.COLON)
         type_name = self.eat_type_name().value
+        if self.match(TokenType.LBRACKET):
+            size = int(self.eat(TokenType.NUMBER).value)
+            self.eat(TokenType.RBRACKET)
+            self.eat(TokenType.SEMICOLON)
+            return ArrayDecl(name=name, type_name=type_name, size=size)
         self.eat(TokenType.ASSIGN)
         value = self.parse_expr()
         self.eat(TokenType.SEMICOLON)
@@ -167,6 +172,16 @@ class Parser:
         value = self.parse_expr()
         self.eat(TokenType.SEMICOLON)
         return AssignStmt(name=name, value=value)
+
+    def parse_index_assign_stmt(self) -> IndexAssignStmt:
+        name = self.eat(TokenType.IDENT).value
+        self.eat(TokenType.LBRACKET)
+        index = self.parse_expr()
+        self.eat(TokenType.RBRACKET)
+        self.eat(TokenType.ASSIGN)
+        value = self.parse_expr()
+        self.eat(TokenType.SEMICOLON)
+        return IndexAssignStmt(name=name, index=index, value=value)
 
     def parse_fun_decl(self) -> FunDecl:
         self.eat(TokenType.FUN)
@@ -280,6 +295,11 @@ class Parser:
                 args = self.parse_arg_list()
                 self.eat(TokenType.RPAREN)
                 left = Call(name=name, args=args)
+            elif self.peek() and self.peek().type == TokenType.LBRACKET:
+                self.advance()
+                index = self.parse_expr()
+                self.eat(TokenType.RBRACKET)
+                left = IndexExpr(name=name, index=index)
             else:
                 left = Ident(name)
         elif tok.type == TokenType.LPAREN:
@@ -287,10 +307,7 @@ class Parser:
             left = self.parse_expr()
             self.eat(TokenType.RPAREN)
         else:
-            msg = (
-                f"unexpected token {tok.type.name!r} {tok.value!r} "
-                f"at line {tok.line}, column {tok.column}"
-            )
+            msg = f"unexpected token {tok.type.name!r} {tok.value!r} at line {tok.line}, column {tok.column}"
             raise ParseError(msg)
 
         while True:
@@ -325,6 +342,7 @@ class Parser:
 
 if __name__ == "__main__":
     import sys
+
     sys.stdout.reconfigure(encoding="utf-8")
 
     with open("examples/sum.cube", encoding="utf-8") as f:
