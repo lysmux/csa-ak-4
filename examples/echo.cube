@@ -1,0 +1,8 @@
+interrupt 0 on_input() {
+    print(getchar());
+}
+
+fun main() {
+    enable_interrupts();
+    while (true) {}
+}

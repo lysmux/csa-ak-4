@@ -12,6 +12,7 @@ from app.translator.nodes import (
     FunDecl,
     Ident,
     IfStmt,
+    InterruptDecl,
     Number,
     PostfixOp,
     Program,
@@ -127,6 +128,8 @@ class Parser:
                 return self.parse_var_decl()
             case TokenType.FUN:
                 return self.parse_fun_decl()
+            case TokenType.INTERRUPT:
+                return self.parse_interrupt_decl()
             case TokenType.RETURN:
                 return self.parse_return_stmt()
             case TokenType.IF:
@@ -176,6 +179,15 @@ class Parser:
             return_type = self.eat_type_name().value
         body = self.parse_block()
         return FunDecl(name=name, params=params, body=body, return_type=return_type)
+
+    def parse_interrupt_decl(self) -> InterruptDecl:
+        self.eat(TokenType.INTERRUPT)
+        vector = int(self.eat(TokenType.NUMBER).value)
+        name = self.eat(TokenType.IDENT).value
+        self.eat(TokenType.LPAREN)
+        self.eat(TokenType.RPAREN)
+        body = self.parse_block()
+        return InterruptDecl(vector=vector, name=name, body=body)
 
     def parse_return_stmt(self) -> ReturnStmt:
         self.eat(TokenType.RETURN)

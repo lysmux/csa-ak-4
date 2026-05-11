@@ -33,6 +33,13 @@ class FunDecl:
 
 
 @dataclass
+class InterruptDecl:
+    vector: int
+    name: str
+    body: Block
+
+
+@dataclass
 class IfStmt:
     condition: Expr | None
     then_block: Block
@@ -111,7 +118,7 @@ class Bool:
     value: bool
 
 
-Statement = ConstDecl | VarDecl | FunDecl | IfStmt | WhileStmt | AssignStmt | ExprStmt | ReturnStmt
+Statement = ConstDecl | VarDecl | FunDecl | InterruptDecl | IfStmt | WhileStmt | AssignStmt | ExprStmt | ReturnStmt
 Expr = BinaryOp | UnaryOp | PostfixOp | Call | Ident | Number | String | Bool
 
 

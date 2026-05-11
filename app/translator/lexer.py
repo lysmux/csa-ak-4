@@ -56,6 +56,7 @@ class TokenType(StrEnum):
     TRUE = "true"
     FALSE = "false"
     RETURN = "return"
+    INTERRUPT = "interrupt"
 
     TYPE = "type"
 
@@ -88,6 +89,7 @@ class Lexer:
         "true": TokenType.TRUE,
         "false": TokenType.FALSE,
         "return": TokenType.RETURN,
+        "interrupt": TokenType.INTERRUPT,
 
         "int": TokenType.TYPE,
         "byte": TokenType.TYPE,

@@ -39,18 +39,18 @@ class ControlUnit:
             data_path: DataPath,
             instr_memory: Memory,
             return_stack: Stack,
+            vector_table: dict[int, int] | None = None,
     ) -> None:
         self._data_path = data_path
         self._instr_memory = instr_memory
         self._return_stack = return_stack
 
-        self._vector_table: dict[int, int] = {
-            0: 0
-        }
+        self._vector_table: dict[int, int] = vector_table or {}
 
         self._pc = 0
         self._ir = 0
         self._program_state = ProgramState(0)
+        self._pending_vector: int | None = None
 
         self._instr = Instruction(Opcode.HALT)
         self._state = State.FETCH
@@ -114,6 +114,13 @@ class ControlUnit:
 
         match self._state:
             case State.START:
+                if ProgramState.IRQ not in self._program_state:
+                    for dev in self._data_path.io_map.values():
+                        vec = dev.tick(self._tick)
+                        if vec is not None and ProgramState.IE in self._program_state:
+                            self._pending_vector = vec
+                            self._program_state |= ProgramState.IRQ
+                            break
                 if ProgramState.IRQ in self._program_state:
                     self._state = State.INTERRUPT
                 else:
@@ -188,7 +195,7 @@ class ControlUnit:
         if self._instr.opcode is Opcode.DUP:
             self._data_path.push(self._data_path.stack.tos)
         if self._instr.opcode is Opcode.DROP:
-            self._data_path.pop()
+            self._data_path.stack.pop()
         if self._instr.opcode is Opcode.SWAP:
             tos = self._data_path.pop()
             nos = self._data_path.pop()
@@ -215,6 +222,15 @@ class ControlUnit:
                 self.latch_pc(PCMux.ADDRESS)
 
 
+        if self._instr.opcode is Opcode.EI:
+            self._program_state |= ProgramState.IE
+        if self._instr.opcode is Opcode.DI:
+            self._program_state &= ~ProgramState.IE
+        if self._instr.opcode is Opcode.RTI:
+            self._pc = self._return_stack.pop()
+            self._data_path.flags = self._return_stack.pop()
+            self._program_state |= ProgramState.IE
+
         if self._instr.opcode is Opcode.CMP:
             self._data_path.cmp()
 
@@ -236,7 +252,14 @@ class ControlUnit:
         self._state = State.DONE
 
     def execute_interrupt(self) -> None:
-        pass
+        assert self._pending_vector is not None
+        self._return_stack.push(int(self._data_path.flags))
+        self._return_stack.push(self._pc)
+        self._program_state &= ~ProgramState.IE
+        self._program_state &= ~ProgramState.IRQ
+        self._pc = self._vector_table[self._pending_vector]
+        self._pending_vector = None
+        self._state = State.DONE
 
     def execute_branch(self, condition: bool) -> None:
         if not condition:
@@ -245,6 +268,9 @@ class ControlUnit:
         self.latch_pc(PCMux.ADDRESS)
 
 
-    def run(self) -> None:
+    def run(self, limit: int | None = None) -> None:
         while self._state is not State.HALT:
+            if limit is not None and self._tick >= limit:
+                logger.warning("Tick limit %d reached, halting", limit)
+                return
             self.tick()

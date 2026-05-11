@@ -5,7 +5,7 @@ from typing import Never
 
 from app.translator.nodes import (
     AssignStmt, BinaryOp, Block, Bool, Call, ConstDecl,
-    ExprStmt, FunDecl, Ident, IfStmt, Number, PostfixOp,
+    ExprStmt, FunDecl, Ident, IfStmt, InterruptDecl, Number, PostfixOp,
     Program, ReturnStmt, String, UnaryOp, VarDecl, WhileStmt,
 )
 
@@ -18,8 +18,11 @@ _INCR_OPS  = frozenset({"INCREMENT", "DECREMENT"})
 
 # Встроенные функции — допустимы без объявления, arity=None означает любое число аргументов
 _BUILTINS: dict[str, int | None] = {
-    "print":   None,
-    "println": None,
+    "print":              None,
+    "println":            None,
+    "getchar":            0,
+    "enable_interrupts":  0,
+    "disable_interrupts": 0,
 }
 
 
@@ -73,6 +76,7 @@ class Analyzer:
         self._errors: list[SemanticError] = []
         self._scope = Scope()
         self._return_type: str | None = None
+        self._in_interrupt_handler = False
 
     def analyze(self, program: Program) -> list[SemanticError]:
         self._visit(program)
@@ -130,6 +134,15 @@ class Analyzer:
                 self._return_type = prev
                 self._pop()
 
+            case InterruptDecl(vector=_, name=name, body=body):
+                self._define(Symbol(name, "interrupt", mutable=False))
+                self._push()
+                prev = self._in_interrupt_handler
+                self._in_interrupt_handler = True
+                self._visit(body)
+                self._in_interrupt_handler = prev
+                self._pop()
+
             case AssignStmt(name=name, value=value):
                 sym = self._resolve(name)
                 if sym is not None and not sym.mutable:
@@ -166,6 +179,8 @@ class Analyzer:
                 self._visit(e)
 
             case ReturnStmt(value=value):
+                if self._in_interrupt_handler:
+                    self._err("cannot return from an interrupt handler")
                 vtype = self._visit(value) if value is not None else None
                 if self._return_type is None:
                     if vtype is not None:
@@ -221,7 +236,9 @@ class Analyzer:
                 else:
                     fun_sym = self._resolve(name)
                     if fun_sym is not None:
-                        if fun_sym.type_name != "fun":
+                        if fun_sym.type_name == "interrupt":
+                            self._err(f"interrupt handler '{name}' cannot be called directly")
+                        elif fun_sym.type_name != "fun":
                             self._err(f"'{name}' is not a function")
                         elif fun_sym.params is not None and len(args) != len(fun_sym.params):
                             self._err(

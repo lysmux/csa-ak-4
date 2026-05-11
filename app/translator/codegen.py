@@ -6,13 +6,11 @@ from app.isa.instruction import Instruction
 from app.isa.opcode import Opcode
 from app.translator.nodes import (
     AssignStmt, BinaryOp, Block, Bool, Call, ConstDecl,
-    ExprStmt, FunDecl, Ident, IfStmt, Number, PostfixOp,
+    ExprStmt, FunDecl, Ident, IfStmt, InterruptDecl, Number, PostfixOp,
     Program, ReturnStmt, String, UnaryOp, VarDecl, WhileStmt,
 )
 
-_BUILTINS = frozenset({"print", "println"})
-
-MMIO_OUT_ADDR = 0x222
+_BUILTINS = frozenset({"print", "println", "getchar", "enable_interrupts", "disable_interrupts"})
 
 # Comparison op name → conditional jump opcode for the TRUE branch
 _CMP_JUMP: dict[str, Opcode] = {
@@ -39,6 +37,7 @@ _ARITH_OP: dict[str, Opcode] = {
 class CompiledProgram:
     instructions: list[int]
     data: list[int]
+    interrupt_handlers: dict[int, int]
 
 
 class CodeGenError(Exception):
@@ -46,7 +45,9 @@ class CodeGenError(Exception):
 
 
 class CodeGen:
-    def __init__(self) -> None:
+    def __init__(self, mmio_out_addr: int = 0x222, mmio_in_addr: int | None = None) -> None:
+        self._mmio_out_addr = mmio_out_addr
+        self._mmio_in_addr = mmio_in_addr
         self._instrs: list[Instruction] = []
         self._scopes: list[dict[str, int]] = [{}]
         self._data: list[int] = []
@@ -54,6 +55,8 @@ class CodeGen:
         self._const_values: dict[int, int] = {}
         self._fun_labels: dict[str, str] = {}
         self._fun_returns: dict[str, bool] = {}
+        self._interrupt_handlers: dict[int, str] = {}
+        self._interrupt_names: set[str] = set()
         self._labels: dict[str, int] = {}
         self._patches: list[tuple[int, str]] = []
         self._label_count: int = 0
@@ -70,9 +73,13 @@ class CodeGen:
             raise CodeGenError("missing entry point: function 'main' is required")
         self._patches.append((entry_idx, main_label))
         self._backpatch()
+        handlers_resolved = {
+            v: self._labels[lbl] for v, lbl in self._interrupt_handlers.items()
+        }
         return CompiledProgram(
             instructions=[i.to_binary() for i in self._instrs],
             data=self._data,
+            interrupt_handlers=handlers_resolved,
         )
 
     # --- emit helpers ------------------------------------------------------
@@ -129,7 +136,7 @@ class CodeGen:
         self._emit(Opcode.DUP)
         self._emit(Opcode.LOADI)
         self._emit_jump(Opcode.JZ, lbl_exit)
-        self._emit(Opcode.STORE, MMIO_OUT_ADDR)
+        self._emit(Opcode.STORE, self._mmio_out_addr)
         self._emit(Opcode.INC)
         self._emit_jump(Opcode.JMP, lbl_loop)
         self._mark_label(lbl_exit)
@@ -284,6 +291,19 @@ class CodeGen:
                 self._pop_scope()
                 self._mark_label(lbl_skip)
 
+            case InterruptDecl(vector=vector, name=name, body=body):
+                lbl_fun  = self._fresh_label()
+                lbl_skip = self._fresh_label()
+                self._interrupt_handlers[vector] = lbl_fun
+                self._interrupt_names.add(name)
+                self._emit_jump(Opcode.JMP, lbl_skip)
+                self._mark_label(lbl_fun)
+                self._push_scope()
+                self._gen(body)
+                self._emit(Opcode.RTI)
+                self._pop_scope()
+                self._mark_label(lbl_skip)
+
             # ----------------------------------------------------------------
             # Expressions — atoms
             # ----------------------------------------------------------------
@@ -379,6 +399,19 @@ class CodeGen:
                     self._gen(value)
                 self._emit(Opcode.RET)
 
+            case Call(name="getchar"):
+                if self._mmio_in_addr is None:
+                    raise CodeGenError("getchar() requires an input device in config")
+                self._emit(Opcode.LOAD, self._mmio_in_addr)
+
+            case Call(name="enable_interrupts"):
+                self._emit(Opcode.EI)
+                self._emit(Opcode.PUSH, 0)   # dummy return value
+
+            case Call(name="disable_interrupts"):
+                self._emit(Opcode.DI)
+                self._emit(Opcode.PUSH, 0)   # dummy return value
+
             case Call(name=name, args=args) if name in _BUILTINS:
                 for arg in args:
                     if isinstance(arg, String):
@@ -386,13 +419,15 @@ class CodeGen:
                         self._emit_cstr_loop(addr)
                     else:
                         self._gen(arg)
-                        self._emit(Opcode.STORE, MMIO_OUT_ADDR)
+                        self._emit(Opcode.STORE, self._mmio_out_addr)
                 if name == "println":
                     self._emit(Opcode.PUSH, ord('\n'))
-                    self._emit(Opcode.STORE, MMIO_OUT_ADDR)
+                    self._emit(Opcode.STORE, self._mmio_out_addr)
                 self._emit(Opcode.PUSH, 0)   # dummy return value
 
             case Call(name=name, args=args):
+                if name in self._interrupt_names:
+                    raise CodeGenError(f"interrupt handler '{name}' cannot be called directly")
                 lbl = self._fun_labels.get(name)
                 if lbl is None:
                     raise CodeGenError(f"undefined function: {name!r}")
