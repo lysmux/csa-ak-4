@@ -22,7 +22,7 @@ class TokenType(StrEnum):
     OR = "||"
     XOR = "^"
 
-    # Single-char operators
+    # Single char operators
     ASSIGN = "="
     LESS_THAN = "<"
     GREATER_THAN = ">"
@@ -57,8 +57,60 @@ class TokenType(StrEnum):
     FALSE = "false"
     RETURN = "return"
     INTERRUPT = "interrupt"
-
     TYPE = "type"
+
+
+type TokenTypeMap = dict[str, TokenType]
+
+WHITESPACE = {" ", "\t", "\n", "\r"}
+
+KEYWORDS: TokenTypeMap = {
+    "var": TokenType.VAR,
+    "const": TokenType.CONST,
+    "if": TokenType.IF,
+    "else": TokenType.ELSE,
+    "while": TokenType.WHILE,
+    "fun": TokenType.FUN,
+    "true": TokenType.TRUE,
+    "false": TokenType.FALSE,
+    "return": TokenType.RETURN,
+    "interrupt": TokenType.INTERRUPT,
+    "int": TokenType.TYPE,
+    "bool": TokenType.TYPE,
+    "string": TokenType.TYPE,
+}
+
+DELIMITERS: TokenTypeMap = {
+    "(": TokenType.LPAREN,
+    ")": TokenType.RPAREN,
+    "{": TokenType.LBRACE,
+    "}": TokenType.RBRACE,
+    "[": TokenType.LBRACKET,
+    "]": TokenType.RBRACKET,
+    ":": TokenType.COLON,
+    ";": TokenType.SEMICOLON,
+    ",": TokenType.COMMA,
+}
+
+OPERATORS: TokenTypeMap = {
+    "++": TokenType.INCREMENT,
+    "--": TokenType.DECREMENT,
+    "==": TokenType.EQUAL,
+    "!=": TokenType.NOT_EQUAL,
+    "<=": TokenType.LESS_THAN_OR_EQUAL,
+    ">=": TokenType.GREATER_THAN_OR_EQUAL,
+    "&&": TokenType.AND,
+    "||": TokenType.OR,
+    "=": TokenType.ASSIGN,
+    "<": TokenType.LESS_THAN,
+    ">": TokenType.GREATER_THAN,
+    "!": TokenType.NOT,
+    "+": TokenType.PLUS,
+    "-": TokenType.MINUS,
+    "*": TokenType.STAR,
+    "/": TokenType.SLASH,
+    "^": TokenType.XOR,
+}
 
 
 @dataclass(slots=True)
@@ -72,64 +124,15 @@ class Token:
 class LexerError(Exception):
     def __init__(self, message: str, line: int, column: int) -> None:
         super().__init__(f"{message} at line {line}, column {column}")
+
         self.line = line
         self.column = column
 
 
 class Lexer:
-    WHITESPACE = {" ", "\t", "\n", "\r"}
-
-    KEYWORDS: dict[str, TokenType] = {
-        "var": TokenType.VAR,
-        "const": TokenType.CONST,
-        "if": TokenType.IF,
-        "else": TokenType.ELSE,
-        "while": TokenType.WHILE,
-        "fun": TokenType.FUN,
-        "true": TokenType.TRUE,
-        "false": TokenType.FALSE,
-        "return": TokenType.RETURN,
-        "interrupt": TokenType.INTERRUPT,
-        "int": TokenType.TYPE,
-        "byte": TokenType.TYPE,
-        "bool": TokenType.TYPE,
-        "string": TokenType.TYPE,
-    }
-
-    DELIMITERS: dict[str, TokenType] = {
-        "(": TokenType.LPAREN,
-        ")": TokenType.RPAREN,
-        "{": TokenType.LBRACE,
-        "}": TokenType.RBRACE,
-        "[": TokenType.LBRACKET,
-        "]": TokenType.RBRACKET,
-        ":": TokenType.COLON,
-        ";": TokenType.SEMICOLON,
-        ",": TokenType.COMMA,
-    }
-
-    OPERATORS: dict[str, TokenType] = {
-        "++": TokenType.INCREMENT,
-        "--": TokenType.DECREMENT,
-        "==": TokenType.EQUAL,
-        "!=": TokenType.NOT_EQUAL,
-        "<=": TokenType.LESS_THAN_OR_EQUAL,
-        ">=": TokenType.GREATER_THAN_OR_EQUAL,
-        "&&": TokenType.AND,
-        "||": TokenType.OR,
-        "=": TokenType.ASSIGN,
-        "<": TokenType.LESS_THAN,
-        ">": TokenType.GREATER_THAN,
-        "!": TokenType.NOT,
-        "+": TokenType.PLUS,
-        "-": TokenType.MINUS,
-        "*": TokenType.STAR,
-        "/": TokenType.SLASH,
-        "^": TokenType.XOR,
-    }
-
     def __init__(self, source: str) -> None:
         self.source = source
+
         self.pos = 0
         self.line = 1
         self.column = 1
@@ -141,10 +144,12 @@ class Lexer:
     def tokenize(self) -> list[Token]:
         tokens: list[Token] = []
 
-        while (token := self.next_token()).type is not TokenType.EOF:
+        while True:
+            token = self.next_token()
             tokens.append(token)
 
-        tokens.append(self.make_token(TokenType.EOF, ""))
+            if token.type is TokenType.EOF:
+                break
 
         return tokens
 
@@ -153,7 +158,7 @@ class Lexer:
 
         char = self.current_char
         if char is None:
-            return self.make_token(TokenType.EOF, "")
+            return Token(type=TokenType.EOF, value="", line=self.line, column=self.column)
 
         if char.isdigit():
             return self.scan_number()
@@ -167,35 +172,30 @@ class Lexer:
         if token := self.scan_operator():
             return token
 
-        if token_type := self.DELIMITERS.get(char):
-            return self.scan_single_char(token_type)
+        if token := self.scan_delimiter():
+            return token
 
         self.error(f"Unexpected character {char!r}")
 
     def scan_number(self) -> Token:
         line, col = self.line, self.column
+
         if self.peek() == "0" and self.peek(1) in ("x", "X"):
-            chars = ["0", self.peek(1)]
             self.advance()
             self.advance()
-            while (c := self.current_char) is not None and (c.isdigit() or c in "abcdefABCDEF"):
-                chars.append(c)
-                self.advance()
-            value = str(int("".join(chars), 16))
-            return Token(TokenType.NUMBER, value, line, col)
-        return self.scan_while(
-            TokenType.NUMBER,
-            lambda c: c.isdigit(),
-        )
+
+            hex_num = self.scan_while(lambda c: c in "abcdefABCDEF")
+            value = str(int(hex_num, 16))
+        else:
+            value = self.scan_while(lambda c: c.isdigit())
+
+        return Token(type=TokenType.NUMBER, value=value, line=line, column=col)
 
     def scan_identifier(self) -> Token:
-        token = self.scan_while(
-            TokenType.IDENT,
-            lambda c: c.isalnum() or c == "_",
-        )
+        line, col = self.line, self.column
 
-        token.type = self.KEYWORDS.get(token.value, TokenType.IDENT)
-        return token
+        value = self.scan_while(lambda c: c.isalpha() or c == "_")
+        return Token(type=KEYWORDS.get(value, TokenType.IDENT), value=value, line=line, column=col)
 
     ESCAPES: dict[str, str] = {
         "n": "\n",
@@ -210,10 +210,9 @@ class Lexer:
     def scan_string(self) -> Token:
         line, col = self.line, self.column
 
-        self.advance()  # opening quote
+        self.advance()
 
         chars: list[str] = []
-
         while (ch := self.current_char) is not None and ch != '"':
             if ch == "\\":
                 esc_line, esc_col = self.line, self.column
@@ -234,7 +233,7 @@ class Lexer:
         if self.current_char is None:
             self.error_at("Unterminated string", line, col)
 
-        self.advance()  # closing quote
+        self.advance()
 
         return Token(
             TokenType.STRING,
@@ -244,60 +243,45 @@ class Lexer:
         )
 
     def scan_operator(self) -> Token | None:
-        two = self.peek(0, 2)
+        line, col = self.line, self.column
 
-        if two is not None and two in self.OPERATORS:
-            return self.consume(two, self.OPERATORS[two])
+        two = self.peek(0, 2)
+        if two is not None and two in OPERATORS:
+            self.advance()
+            self.advance()
+
+            return Token(type=OPERATORS[two], value=two, line=line, column=col)
 
         one = self.peek()
+        if one is not None and one in OPERATORS:
+            self.advance()
 
-        if one is not None and one in self.OPERATORS:
-            return self.consume(one, self.OPERATORS[one])
+            return Token(type=OPERATORS[one], value=one, line=line, column=col)
 
         return None
 
-    def scan_single_char(self, token_type: TokenType) -> Token:
+    def scan_delimiter(self) -> Token | None:
+        line, col = self.line, self.column
+
         char = self.current_char
+        if char is not None and self.current_char in DELIMITERS:
+            self.advance()
 
-        if char is None:
-            self.error("Unexpected EOF")
+            return Token(type=DELIMITERS[char], value=char, line=line, column=col)
 
-        return self.consume(char, token_type)
+        return None
 
-    def scan_while(
-        self,
-        token_type: TokenType,
-        predicate: Callable[[str], bool],
-    ) -> Token:
-        line, col = self.line, self.column
-        chars: list[str] = []
-
+    def scan_while(self, predicate: Callable[[str], bool]) -> str:
+        chars = ""
         while (char := self.current_char) is not None and predicate(char):
-            chars.append(char)
+            chars += char
             self.advance()
 
-        return Token(
-            token_type,
-            "".join(chars),
-            line,
-            col,
-        )
-
-    def consume(
-        self,
-        lexeme: str,
-        token_type: TokenType,
-    ) -> Token:
-        line, col = self.line, self.column
-
-        for _ in lexeme:
-            self.advance()
-
-        return Token(token_type, lexeme, line, col)
+        return chars
 
     def skip_ignored(self) -> None:
         while True:
-            if self.current_char in self.WHITESPACE:
+            if self.current_char in WHITESPACE:
                 self.advance()
                 continue
 
@@ -328,18 +312,6 @@ class Lexer:
             self.column += 1
 
         self.pos += 1
-
-    def make_token(
-        self,
-        token_type: TokenType,
-        value: str,
-    ) -> Token:
-        return Token(
-            token_type,
-            value,
-            self.line,
-            self.column,
-        )
 
     def error(self, message: str) -> Never:
         raise LexerError(message, self.line, self.column)
