@@ -1,38 +1,43 @@
 from __future__ import annotations
 
 import dataclasses as _dc
-import sys as _sys
+import sys
+from abc import ABC
 from dataclasses import dataclass
 
 
 @dataclass
-class Program:
+class ASTNode(ABC): ...  # noqa: B024
+
+
+@dataclass
+class Program(ASTNode):
     body: list[Statement]
 
 
 @dataclass
-class ConstDecl:
+class ConstDecl(ASTNode):
     name: str
     type_name: str
     value: Expr
 
 
 @dataclass
-class VarDecl:
+class VarDecl(ASTNode):
     name: str
     type_name: str
     value: Expr
 
 
 @dataclass
-class ArrayDecl:
+class ArrayDecl(ASTNode):
     name: str
     type_name: str
     size: int
 
 
 @dataclass
-class FunDecl:
+class FunDecl(ASTNode):
     name: str
     params: list[tuple[str, str]]
     body: Block
@@ -40,105 +45,105 @@ class FunDecl:
 
 
 @dataclass
-class InterruptDecl:
+class InterruptDecl(ASTNode):
     vector: int
     name: str
     body: Block
 
 
 @dataclass
-class IfStmt:
+class IfStmt(ASTNode):
     condition: Expr | None
     then_block: Block
     else_branch: IfStmt | Block | None
 
 
 @dataclass
-class WhileStmt:
+class WhileStmt(ASTNode):
     condition: Expr
     body: Block
 
 
 @dataclass
-class Block:
+class Block(ASTNode):
     body: list[Statement]
 
 
 @dataclass
-class AssignStmt:
+class AssignStmt(ASTNode):
     name: str
     value: Expr
 
 
 @dataclass
-class ExprStmt:
+class ExprStmt(ASTNode):
     expr: Expr
 
 
 @dataclass
-class ReturnStmt:
+class ReturnStmt(ASTNode):
     value: Expr | None
 
 
 @dataclass
-class IndexAssignStmt:
+class IndexAssignStmt(ASTNode):
     name: str
     index: Expr
     value: Expr
 
 
 @dataclass
-class BinaryOp:
+class BinaryOp(ASTNode):
     op: str
     left: Expr
     right: Expr
 
 
 @dataclass
-class UnaryOp:
+class UnaryOp(ASTNode):
     op: str
     operand: Expr
 
 
 @dataclass
-class PostfixOp:
+class PostfixOp(ASTNode):
     op: str
     operand: Expr
 
 
 @dataclass
-class Call:
+class Call(ASTNode):
     name: str
     args: list[Expr]
 
 
 @dataclass
-class IndexExpr:
+class IndexExpr(ASTNode):
     name: str
     index: Expr
 
 
 @dataclass
-class Ident:
+class Ident(ASTNode):
     name: str
 
 
 @dataclass
-class Number:
+class Number(ASTNode):
     value: int
 
 
 @dataclass
-class String:
+class String(ASTNode):
     value: str
 
 
 @dataclass
-class Bool:
+class Bool(ASTNode):
     value: bool
 
 
-Statement = (
+type Statement = (
     ConstDecl
     | VarDecl
     | ArrayDecl
@@ -151,23 +156,23 @@ Statement = (
     | ExprStmt
     | ReturnStmt
 )
-Expr = BinaryOp | UnaryOp | PostfixOp | Call | IndexExpr | Ident | Number | String | Bool
+type Expr = BinaryOp | UnaryOp | PostfixOp | Call | IndexExpr | Ident | Number | String | Bool
 
 
-def print_ast(node: object, *, file: _sys.IO[str] = _sys.stdout) -> None:
+def print_ast(node: ASTNode, *, file: sys.IO[str] = sys.stdout) -> None:
     lines: list[str] = []
     _ast_collect(node, "", "", lines)
     print("\n".join(lines), file=file)
 
 
-def _ast_collect(node: object, prefix: str, child_prefix: str, lines: list[str]) -> None:
+def _ast_collect(node: ASTNode, prefix: str, child_prefix: str, lines: list[str]) -> None:
     if not _dc.is_dataclass(node) or isinstance(node, type):
         lines.append(prefix + repr(node))
         return
 
-    scalars: list[tuple[str, object]] = []
-    children: list[tuple[str, object]] = []
-    for f in _dc.fields(node):  # type: ignore[arg-type]
+    scalars: list[tuple[str, ASTNode]] = []
+    children: list[tuple[str, ASTNode]] = []
+    for f in _dc.fields(node):
         v = getattr(node, f.name)
         if (isinstance(v, list) and v) or (_dc.is_dataclass(v) and not isinstance(v, type)):
             children.append((f.name, v))

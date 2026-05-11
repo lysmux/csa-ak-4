@@ -1,4 +1,4 @@
-from app.translator.lexer import Lexer, Token, TokenType
+from app.translator.lexer import Token, TokenType
 from app.translator.nodes import (
     ArrayDecl,
     AssignStmt,
@@ -24,10 +24,9 @@ from app.translator.nodes import (
     UnaryOp,
     VarDecl,
     WhileStmt,
-    print_ast,
 )
 
-_INFIX_BP: dict[TokenType, int] = {
+INFIX_BP: dict[TokenType, int] = {
     TokenType.OR: 1,
     TokenType.AND: 2,
     TokenType.XOR: 3,
@@ -43,13 +42,13 @@ _INFIX_BP: dict[TokenType, int] = {
     TokenType.SLASH: 7,
 }
 
-_POSTFIX_BP: dict[TokenType, int] = {
+POSTFIX_BP: dict[TokenType, int] = {
     TokenType.INCREMENT: 9,
     TokenType.DECREMENT: 9,
 }
 
-_PREFIX_BP = 8
-_PREFIX_OPS = {TokenType.NOT, TokenType.INCREMENT, TokenType.DECREMENT}
+PREFIX_BP = 8
+PREFIX_OPS = {TokenType.NOT, TokenType.INCREMENT, TokenType.DECREMENT}
 
 
 class ParseError(Exception):
@@ -59,7 +58,14 @@ class ParseError(Exception):
 class Parser:
     def __init__(self, tokens: list[Token]) -> None:
         self.tokens = tokens
+
         self.pos = 0
+
+    def parse(self) -> Program:
+        body: list[Statement] = []
+        while not self.at_end():
+            body.append(self.parse_statement())
+        return Program(body)
 
     def peek(self, offset: int = 0) -> Token | None:
         idx = self.pos + offset
@@ -74,49 +80,23 @@ class Parser:
         tok = self.peek()
         return tok is None or tok.type == TokenType.EOF
 
-    def match(self, *types: TokenType) -> Token | None:
-        tok = self.peek()
-        if tok and tok.type in types:
-            return self.advance()
-        return None
-
     def eat(self, expected: TokenType) -> Token:
         tok = self.peek()
         if tok is None:
-            msg = f"expected {expected.name}, got end of input"
+            msg = f"Expected {expected.name}, got EOF"
             raise ParseError(msg)
         if tok.type != expected:
             msg = (
-                f"expected {expected.name}, got {tok.type.name!r} {tok.value!r} at line {tok.line}, column {tok.column}"
+                f"Expected {expected.name}, got {tok.type.name!r} {tok.value!r} at line {tok.line}, column {tok.column}"
             )
             raise ParseError(msg)
+
         return self.advance()
-
-    def eat_type_name(self) -> Token:
-        """Accept IDENT or TYPE (int, byte, bool, string are tokenized as TYPE)."""
-        tok = self.peek()
-        if tok is None:
-            msg = "expected type name, got end of input"
-            raise ParseError(msg)
-        if tok.type not in (TokenType.IDENT, TokenType.TYPE):
-            msg = f"expected type name, got {tok.type.name!r} {tok.value!r} at line {tok.line}, column {tok.column}"
-            raise ParseError(msg)
-        return self.advance()
-
-    # --- entry point ---
-
-    def parse(self) -> Program:
-        body: list[Statement] = []
-        while not self.at_end():
-            body.append(self.parse_statement())
-        return Program(body)
-
-    # --- statements ---
 
     def parse_statement(self) -> Statement:
         tok = self.peek()
         if tok is None:
-            msg = "unexpected end of input"
+            msg = "Unexpected EOF"
             raise ParseError(msg)
 
         match tok.type:
@@ -145,7 +125,7 @@ class Parser:
         self.eat(TokenType.CONST)
         name = self.eat(TokenType.IDENT).value
         self.eat(TokenType.COLON)
-        type_name = self.eat_type_name().value
+        type_name = self.eat(TokenType.TYPE).value
         self.eat(TokenType.ASSIGN)
         value = self.parse_expr()
         self.eat(TokenType.SEMICOLON)
@@ -155,12 +135,15 @@ class Parser:
         self.eat(TokenType.VAR)
         name = self.eat(TokenType.IDENT).value
         self.eat(TokenType.COLON)
-        type_name = self.eat_type_name().value
-        if self.match(TokenType.LBRACKET):
+        type_name = self.eat(TokenType.TYPE).value
+
+        if self.peek().type is TokenType.LBRACKET:
+            self.advance()
             size = int(self.eat(TokenType.NUMBER).value)
             self.eat(TokenType.RBRACKET)
             self.eat(TokenType.SEMICOLON)
             return ArrayDecl(name=name, type_name=type_name, size=size)
+
         self.eat(TokenType.ASSIGN)
         value = self.parse_expr()
         self.eat(TokenType.SEMICOLON)
@@ -189,11 +172,30 @@ class Parser:
         self.eat(TokenType.LPAREN)
         params = self.parse_param_list()
         self.eat(TokenType.RPAREN)
+
         return_type: str | None = None
-        if self.match(TokenType.COLON):
-            return_type = self.eat_type_name().value
+        if self.peek().type is TokenType.COLON:
+            self.advance()
+            return_type = self.eat(TokenType.TYPE).value
         body = self.parse_block()
         return FunDecl(name=name, params=params, body=body, return_type=return_type)
+
+    def parse_param_list(self) -> list[tuple[str, str]]:
+        params: list[tuple[str, str]] = []
+        if self.peek() and self.peek().type == TokenType.RPAREN:
+            return params
+
+        while True:
+            type_name = self.eat(TokenType.TYPE).value
+            param_name = self.eat(TokenType.IDENT).value
+            params.append((type_name, param_name))
+
+            if self.peek().type is not TokenType.COMMA:
+                break
+
+            self.advance()
+
+        return params
 
     def parse_interrupt_decl(self) -> InterruptDecl:
         self.eat(TokenType.INTERRUPT)
@@ -208,21 +210,23 @@ class Parser:
         self.eat(TokenType.RETURN)
         if self.peek() and self.peek().type != TokenType.SEMICOLON:
             value = self.parse_expr()
-            self.match(TokenType.SEMICOLON)
+            self.eat(TokenType.SEMICOLON)
             return ReturnStmt(value=value)
-        self.match(TokenType.SEMICOLON)
+        self.eat(TokenType.SEMICOLON)
         return ReturnStmt(value=None)
 
     def parse_if_stmt(self) -> IfStmt:
         self.eat(TokenType.IF)
         self.eat(TokenType.LPAREN)
-        condition: Expr | None = None
-        if not (self.peek() and self.peek().type == TokenType.RPAREN):
-            condition = self.parse_expr()
+
+        condition = self.parse_expr()
+
         self.eat(TokenType.RPAREN)
         then_block = self.parse_block()
+
         else_branch: IfStmt | Block | None = None
-        if self.match(TokenType.ELSE):
+        if self.peek().type is TokenType.ELSE:
+            self.advance()
             if self.peek() and self.peek().type == TokenType.IF:
                 else_branch = self.parse_if_stmt()
             else:
@@ -239,7 +243,7 @@ class Parser:
 
     def parse_expr_stmt(self) -> ExprStmt:
         expr = self.parse_expr()
-        self.match(TokenType.SEMICOLON)
+        self.eat(TokenType.SEMICOLON)
         return ExprStmt(expr=expr)
 
     def parse_block(self) -> Block:
@@ -250,44 +254,29 @@ class Parser:
         self.eat(TokenType.RBRACE)
         return Block(body=body)
 
-    def parse_param_list(self) -> list[tuple[str, str]]:
-        params: list[tuple[str, str]] = []
-        if self.peek() and self.peek().type == TokenType.RPAREN:
-            return params
-        type_name = self.eat_type_name().value
-        param_name = self.eat(TokenType.IDENT).value
-        params.append((type_name, param_name))
-        while self.match(TokenType.COMMA):
-            type_name = self.eat_type_name().value
-            param_name = self.eat(TokenType.IDENT).value
-            params.append((type_name, param_name))
-        return params
-
-    # --- expressions (Pratt) ---
-
     def parse_expr(self, min_bp: int = 0) -> Expr:
         tok = self.peek()
         if tok is None:
-            msg = "unexpected end of input in expression"
+            msg = "Unexpected end of input in expression"
             raise ParseError(msg)
 
-        if tok.type in _PREFIX_OPS:
+        if tok.type in PREFIX_OPS:
             op = self.advance()
             if op.type in (TokenType.INCREMENT, TokenType.DECREMENT):
                 operand = Ident(self.eat(TokenType.IDENT).value)
             else:
-                operand = self.parse_expr(_PREFIX_BP)
+                operand = self.parse_expr(PREFIX_BP)
             left: Expr = UnaryOp(op=op.type.name, operand=operand)
         elif tok.type == TokenType.NUMBER:
             left = Number(int(self.advance().value))
         elif tok.type == TokenType.STRING:
             left = String(self.advance().value)
         elif tok.type == TokenType.TRUE:
-            self.advance()
             left = Bool(True)
-        elif tok.type == TokenType.FALSE:
             self.advance()
+        elif tok.type == TokenType.FALSE:
             left = Bool(False)
+            self.advance()
         elif tok.type == TokenType.IDENT:
             name = self.advance().value
             if self.peek() and self.peek().type == TokenType.LPAREN:
@@ -307,7 +296,7 @@ class Parser:
             left = self.parse_expr()
             self.eat(TokenType.RPAREN)
         else:
-            msg = f"unexpected token {tok.type.name!r} {tok.value!r} at line {tok.line}, column {tok.column}"
+            msg = f"Unexpected token {tok.type.name!r} {tok.value!r} at line {tok.line}, column {tok.column}"
             raise ParseError(msg)
 
         while True:
@@ -315,15 +304,16 @@ class Parser:
             if op_tok is None:
                 break
 
-            post_bp = _POSTFIX_BP.get(op_tok.type)
+            post_bp = POSTFIX_BP.get(op_tok.type)
             if post_bp is not None and post_bp > min_bp:
                 self.advance()
                 left = PostfixOp(op=op_tok.type.name, operand=left)
                 continue
 
-            infix_bp = _INFIX_BP.get(op_tok.type)
+            infix_bp = INFIX_BP.get(op_tok.type)
             if infix_bp is None or infix_bp <= min_bp:
                 break
+
             self.advance()
             right = self.parse_expr(infix_bp)
             left = BinaryOp(op=op_tok.type.name, left=left, right=right)
@@ -334,19 +324,12 @@ class Parser:
         args: list[Expr] = []
         if self.peek() and self.peek().type == TokenType.RPAREN:
             return args
-        args.append(self.parse_expr())
-        while self.match(TokenType.COMMA):
+
+        while True:
             args.append(self.parse_expr())
+            if self.peek().type is not TokenType.COMMA:
+                break
+
+            self.advance()
+
         return args
-
-
-if __name__ == "__main__":
-    import sys
-
-    sys.stdout.reconfigure(encoding="utf-8")
-
-    with open("examples/sum.cube", encoding="utf-8") as f:
-        tokens = Lexer(f.read()).tokenize()
-
-    parser = Parser(tokens)
-    print_ast(parser.parse())

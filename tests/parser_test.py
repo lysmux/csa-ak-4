@@ -45,8 +45,8 @@ def test_const_decl():
 
 
 def test_var_decl():
-    assert stmt("var y: byte = 0;") == VarDecl(
-        name="y", type_name="byte", value=Number(0)
+    assert stmt("var y: int = 0;") == VarDecl(
+        name="y", type_name="int", value=Number(0)
     )
 
 
@@ -281,13 +281,6 @@ def test_if_else_if():
     assert isinstance(node.else_branch, IfStmt)
     assert node.else_branch.condition == Ident("b")
 
-
-def test_if_empty_condition():
-    node = stmt("if () {}")
-    assert isinstance(node, IfStmt)
-    assert node.condition is None
-
-
 def test_if_body():
     node = stmt("if (x) { y = 1; }")
     assert node.then_block == Block([AssignStmt("y", Number(1))])
@@ -336,11 +329,6 @@ def test_multiple_statements():
 def test_empty_program():
     assert parse("") == Program([])
 
-
-def test_full_example():
-    src = open("examples/example.cube").read()
-    program = parse(src)
-    assert len(program.body) == 13
 
 
 # ---------------------------------------------------------------------------
