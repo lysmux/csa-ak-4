@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.config import InputDeviceConfig
+from app.config import InputDeviceConfig, OutputDeviceConfig
 from app.isa.instruction import Instruction
 from app.isa.opcode import Opcode
 from app.translator.nodes import (
@@ -68,10 +68,11 @@ class CodeGenError(Exception):
 class CodeGen:
     def __init__(
         self,
-        output_address: int,
+        output_devices: dict[str, OutputDeviceConfig],
         input_devices: dict[str, InputDeviceConfig] | None = None,
     ) -> None:
-        self._output_address = output_address
+        self._output_devices = output_devices
+        self._default_output_name = next((name for name, cfg in output_devices.items() if cfg.default), None)
         self._input_devices = input_devices or {}
         self._inputs_by_vector: dict[int, InputDeviceConfig] = {}
         for dev in self._input_devices.values():
@@ -193,6 +194,15 @@ class CodeGen:
         self._mark_label(lbl_exit)
         self._emit(Opcode.DROP)
         self._emit(Opcode.DROP)
+
+    def _resolve_output_device(self, args: list[object]) -> tuple[OutputDeviceConfig, list[object]]:
+        if args and isinstance(args[0], Ident) and args[0].name in self._output_devices:
+            return self._output_devices[args[0].name], args[1:]
+
+        if self._default_output_name is None:
+            msg = "no default output device configured; pass an output label as the first print argument"
+            raise CodeGenError(msg)
+        return self._output_devices[self._default_output_name], args
 
     # --- compile-time evaluation -------------------------------------------
 
@@ -524,14 +534,14 @@ class CodeGen:
                 self._emit(Opcode.PUSH, 0)  # dummy return value
 
             case Call(name="print", args=args):
-                mmio = self._output_address
-                for arg in args:
+                device, payload = self._resolve_output_device(args)
+                for arg in payload:
                     if isinstance(arg, String):
                         addr = self._alloc_string(arg.value)
-                        self._emit_cstr_loop(addr, mmio)
+                        self._emit_cstr_loop(addr, device.address)
                     else:
                         self._gen(arg)
-                        self._emit(Opcode.STORE, mmio)
+                        self._emit(Opcode.STORE, device.address)
                 self._emit(Opcode.PUSH, 0)  # dummy return value
 
             case Call(name=name, args=args):

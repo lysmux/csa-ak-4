@@ -17,29 +17,28 @@ from app.translator.codegen import CompiledProgram
 class SimulationResult:
     ticks: int
     wall_ms: float
-    output: str
+    outputs: dict[str, str]
 
 
 @dataclass(frozen=True)
 class IODevices:
-    output: Output
+    outputs: dict[str, Output]
     io_map: dict[int, Device]
 
 
-def _build_input_devices(config: IOConfig) -> dict[int, Input]:
-    return {
-        cfg.address: Input(schedule=cfg.schedule, vector=cfg.vector)
-        for cfg in config.inputs.values()
-    }
-
-
 def _build_io_devices(config: IOConfig) -> IODevices:
-    output = Output(format=config.output.format)
-    io_map: dict[int, Device] = {
-        config.output.address: output,
-        **_build_input_devices(config),
-    }
-    return IODevices(output=output, io_map=io_map)
+    outputs: dict[str, Output] = {}
+    io_map: dict[int, Device] = {}
+
+    for name, cfg in config.outputs.items():
+        output = Output(format=cfg.format)
+        outputs[name] = output
+        io_map[cfg.address] = output
+
+    for cfg in config.inputs.values():
+        io_map[cfg.address] = Input(schedule=cfg.schedule, vector=cfg.vector)
+
+    return IODevices(outputs=outputs, io_map=io_map)
 
 
 def simulate(
@@ -72,8 +71,13 @@ def simulate(
     cu.run(limit=config.limit, on_tick=on_tick)
     wall_ms = (time.perf_counter() - wall_start) * 1000.0
 
+    output_strings = {
+        name: output.as_string()
+        for name, output in io_devices.outputs.items()
+    }
+
     return SimulationResult(
         ticks=cu.snapshot.tick,
         wall_ms=wall_ms,
-        output=io_devices.output.as_string(),
+        outputs=output_strings,
     )

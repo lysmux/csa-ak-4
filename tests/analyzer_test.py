@@ -10,6 +10,12 @@ def analyze(source: str) -> None:
     Analyzer().analyze(ast)
 
 
+def analyze_with_outputs(source: str, outputs: set[str]) -> None:
+    tokens = Lexer(source).tokenize()
+    ast = Parser(tokens).parse()
+    Analyzer(output_devices=outputs).analyze(ast)
+
+
 def error(source: str) -> str | None:
     try:
         analyze(source)
@@ -268,6 +274,17 @@ def test_print_int_ok():
 
 def test_print_bool_ok():
     ok("var b: bool = true; print(b);")
+
+
+def test_print_output_label_ok():
+    analyze_with_outputs('print(err, "hello");', {"default", "err"})
+
+
+def test_output_label_as_value_raises():
+    tokens = Lexer("var x: int = err;").tokenize()
+    ast = Parser(tokens).parse()
+    with pytest.raises(SemanticError, match="output device label 'err'"):
+        Analyzer(output_devices={"err"}).analyze(ast)
 
 
 def test_print_invalid_type_fun():

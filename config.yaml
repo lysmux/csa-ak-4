@@ -9,9 +9,15 @@ stack_size:
   data: 1000
 
 io:
-  output:
-    format: string
-    address: 0x222
+  outputs:
+    default:
+      format: string
+      address: 0x222
+      default: true
+    debug:
+      format: raw
+      address: 0x224
+      default: false
   inputs:
     keyboard:
       address: 0x223

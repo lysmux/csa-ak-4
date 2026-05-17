@@ -39,6 +39,7 @@ class Type(StrEnum):
     ARRAY = "array"
     FUN = "fun"
     INTERRUPT = "interrupt"
+    OUTPUT_DEVICE = "output_device"
     INPUT_DEVICE = "input_device"
 
 
@@ -102,12 +103,15 @@ class SemanticError(Exception):
 class Analyzer:
     def __init__(
         self,
+        output_devices: set[str] | None = None,
         input_devices: set[str] | None = None,
     ) -> None:
         self._scope = Scope()
         self._return_type: Type | None = None
         self._in_interrupt_handler = False
 
+        for label in output_devices or set():
+            self._scope.define(Symbol(label, Type.OUTPUT_DEVICE, mutable=False))
         for label in input_devices or set():
             self._scope.define(Symbol(label, Type.INPUT_DEVICE, mutable=False))
 
@@ -268,7 +272,13 @@ class Analyzer:
                 spec = BUILTINS.get(name)
                 if spec is not None:
                     if name == "print":
-                        for i, arg in enumerate(args):
+                        payload = args
+                        if args and isinstance(args[0], Ident):
+                            first_sym = self._scope.resolve(args[0].name)
+                            if first_sym is not None and first_sym.type_name == Type.OUTPUT_DEVICE:
+                                payload = args[1:]
+
+                        for i, arg in enumerate(payload):
                             t = self._visit(arg)
                             if t is not None and t not in PRINTABLE:
                                 self.error(f"argument {i + 1}: invalid type '{t}', expected one of {sorted(PRINTABLE)}")
@@ -318,6 +328,8 @@ class Analyzer:
                 sym = self._resolve(name)
                 if sym is not None:
                     match sym.type_name:
+                        case Type.OUTPUT_DEVICE:
+                            self.error(f"output device label '{name}' can only appear as first arg of print")
                         case Type.INPUT_DEVICE:
                             self.error(f"input device label '{name}' can only appear as arg of read")
                         case Type.ARRAY:

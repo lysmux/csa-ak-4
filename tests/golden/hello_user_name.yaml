@@ -36,9 +36,11 @@ config:
     ret: 100
     data: 100
   io:
-    output:
-      format: string
-      address: 546
+    outputs:
+      default:
+        format: string
+        address: 546
+        default: true
     inputs:
       stdin:
         address: 547
@@ -55,8 +57,9 @@ config:
 
             '
 max_trace: 80
-expected_output: |
-  What is your name? Hello, Bob!
+expected_output:
+  default: |
+    What is your name? Hello, Bob!
 ast: |
   Program
   └─ body:

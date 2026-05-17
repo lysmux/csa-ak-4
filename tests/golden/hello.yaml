@@ -14,16 +14,17 @@ config:
   io:
     outputs:
       char_output:
-        kind: char
+        format: string
         address: 546
+        default: true
       int_output:
-        kind: int
+        format: raw
         address: 548
 max_trace: 200
 expected_output:
   char_output: |
     Hello, World!
-  int_output: []
+  int_output: ''
 ast: |
   Program
   └─ body:

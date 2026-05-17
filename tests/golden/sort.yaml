@@ -55,9 +55,11 @@ config:
     ret: 100
     data: 100
   io:
-    output:
-      format: raw
-      address: 548
+    outputs:
+      default:
+        format: raw
+        address: 548
+        default: true
     inputs:
       stdin:
         address: 547
@@ -76,7 +78,8 @@ config:
         - - 600
           - "\0"
 max_trace: 100
-expected_output: 1 3 4 5 8
+expected_output:
+  default: 1 3 4 5 8
 ast: |
   Program
   └─ body:

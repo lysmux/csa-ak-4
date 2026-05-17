@@ -1,6 +1,6 @@
 fun main() {
     print("Hello");
 
-    print(1);
-    print(2);
+    print(debug, 1);
+    print(debug, 2);
 }

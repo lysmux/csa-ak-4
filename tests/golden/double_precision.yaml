@@ -36,11 +36,14 @@ config:
     ret: 100
     data: 100
   io:
-    output:
-      format: raw
-      address: 548
+    outputs:
+      default:
+        format: raw
+        address: 548
+        default: true
 max_trace: 200
-expected_output: 1 0
+expected_output:
+  default: 1 0
 ast: |
   Program
   └─ body:

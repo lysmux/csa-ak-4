@@ -34,7 +34,8 @@ def run(file: Path, config_path: Path | None, trace: bool) -> None:
 
     result = simulate(program, config, on_tick=on_tick)
 
-    out.section("Output").line(result.output)
+    out.section("Output")
+    out.table(list(result.outputs.items()), key_fmt=partial(click.style, fg="cyan"))
 
     out.section("Summary").table(
         [("ticks:", str(result.ticks)), ("time:", f"{result.wall_ms:.3f} ms")],

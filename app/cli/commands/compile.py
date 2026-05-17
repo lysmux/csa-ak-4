@@ -18,9 +18,12 @@ from app.translator.parser import Parser
 def compile_source(source: Path, config: Config) -> CompiledProgram:
     tokens = Lexer(source.read_text(encoding="utf-8")).tokenize()
     ast = Parser(tokens).parse()
-    Analyzer(input_devices=set(config.io.inputs)).analyze(ast)
+    Analyzer(
+        output_devices=set(config.io.outputs),
+        input_devices=set(config.io.inputs),
+    ).analyze(ast)
     return CodeGen(
-        output_address=config.io.output.address,
+        output_devices=config.io.outputs,
         input_devices=config.io.inputs,
     ).generate(ast)
 

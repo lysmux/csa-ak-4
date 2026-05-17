@@ -18,6 +18,7 @@ class StackSize(BaseModel):
 class OutputDeviceConfig(BaseModel):
     format: Literal["string", "raw"] = "string"
     address: int
+    default: bool = False
 
 
 class InputDeviceConfig(BaseModel):
@@ -49,12 +50,30 @@ class InputDeviceConfig(BaseModel):
 
 
 class IOConfig(BaseModel):
-    output: OutputDeviceConfig
+    outputs: dict[str, OutputDeviceConfig] = Field(default_factory=dict)
     inputs: dict[str, InputDeviceConfig] = Field(default_factory=dict)
+
+    @property
+    def default_output_name(self) -> str | None:
+        return next((name for name, cfg in self.outputs.items() if cfg.default), None)
 
     @model_validator(mode="after")
     def validate_no_address_collision(self) -> "IOConfig":
-        used: dict[int, str] = {self.output.address: "output"}
+        default_output_names = [name for name, cfg in self.outputs.items() if cfg.default]
+        if len(default_output_names) > 1:
+            msg = f"only one output device can be default, got {default_output_names}"
+            raise ValueError(msg)
+
+        used: dict[int, str] = {}
+        for name, cfg in self.outputs.items():
+            if cfg.address in used:
+                msg = (
+                    f"output {name!r} address {cfg.address:#x} collides with "
+                    f"{used[cfg.address]!r}"
+                )
+                raise ValueError(msg)
+            used[cfg.address] = f"output {name!r}"
+
         for name, cfg in self.inputs.items():
             if cfg.address in used:
                 msg = (
@@ -70,7 +89,7 @@ class Config(BaseModel):
     limit: int = Field(default=1000, gt=0)
     memory_size: MemorySize = Field(default_factory=MemorySize)
     stack_size: StackSize = Field(default_factory=StackSize)
-    io: IOConfig
+    io: IOConfig = Field(default_factory=IOConfig)
 
     @model_validator(mode="after")
     def validate_schedule_within_limit(self) -> "Config":

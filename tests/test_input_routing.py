@@ -1,5 +1,5 @@
 import pytest
-from app.config import InputDeviceConfig
+from app.config import InputDeviceConfig, OutputDeviceConfig
 from app.simulation.control_unit import ControlUnit
 from app.simulation.data_path import DataPath
 from app.simulation.io import Device, Input, Output
@@ -18,6 +18,7 @@ INPUTS: dict[str, InputDeviceConfig] = {
     "keyboard": InputDeviceConfig(address=KEYBOARD_ADDR, vector=0),
     "debug_input": InputDeviceConfig(address=DEBUG_IN_ADDR, vector=1),
 }
+OUTPUTS = {"default": OutputDeviceConfig(address=OUT_ADDR, default=True)}
 
 
 def _compile(
@@ -26,8 +27,8 @@ def _compile(
 ):
     tokens = Lexer(src).tokenize()
     ast = Parser(tokens).parse()
-    Analyzer(input_devices=set(inputs)).analyze(ast)
-    return CodeGen(output_address=OUT_ADDR, input_devices=inputs).generate(ast)
+    Analyzer(output_devices=set(OUTPUTS), input_devices=set(inputs)).analyze(ast)
+    return CodeGen(output_devices=OUTPUTS, input_devices=inputs).generate(ast)
 
 
 def _run(src: str, schedules: dict[int, list[tuple[int, str]]] | None = None,
@@ -143,8 +144,8 @@ def test_codegen_with_no_input_devices_outside_handler():
             """
         ).tokenize()
         ast = Parser(tokens).parse()
-        Analyzer().analyze(ast)
+        Analyzer(output_devices=set(OUTPUTS)).analyze(ast)
         CodeGen(
-            output_address=OUT_ADDR,
+            output_devices=OUTPUTS,
             input_devices={},
         ).generate(ast)

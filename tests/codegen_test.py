@@ -1,4 +1,5 @@
 import pytest
+from app.config import OutputDeviceConfig
 from app.isa.instruction import Instruction
 from app.isa.opcode import Opcode
 from app.translator.codegen import CodeGen, CodeGenError, CompiledProgram
@@ -6,6 +7,7 @@ from app.translator.lexer import Lexer
 from app.translator.parser import Parser
 
 _OUT_ADDR = 0x222
+_OUTPUTS = {"default": OutputDeviceConfig(address=_OUT_ADDR, default=True)}
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -14,7 +16,7 @@ _OUT_ADDR = 0x222
 def compile(src: str) -> CompiledProgram:
     tokens = Lexer(src).tokenize()
     ast = Parser(tokens).parse()
-    return CodeGen(output_address=_OUT_ADDR).generate(ast, require_entry_point=False)
+    return CodeGen(output_devices=_OUTPUTS).generate(ast, require_entry_point=False)
 
 
 def instrs(src: str) -> list[Instruction]:
@@ -462,11 +464,11 @@ def test_undefined_var_raises():
     from app.translator.nodes import ExprStmt, Ident, Program
     prog = Program([ExprStmt(Ident("unknown"))])
     with pytest.raises(CodeGenError, match="undefined variable"):
-        CodeGen(output_address=_OUT_ADDR).generate(prog, require_entry_point=False)
+        CodeGen(output_devices=_OUTPUTS).generate(prog, require_entry_point=False)
 
 
 def test_undefined_function_raises():
     from app.translator.nodes import Call, ExprStmt, Program
     prog = Program([ExprStmt(Call("no_such_fun", []))])
     with pytest.raises(CodeGenError, match="undefined function"):
-        CodeGen(output_address=_OUT_ADDR).generate(prog, require_entry_point=False)
+        CodeGen(output_devices=_OUTPUTS).generate(prog, require_entry_point=False)

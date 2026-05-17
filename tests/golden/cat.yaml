@@ -19,10 +19,11 @@ config:
   io:
     outputs:
       char_output:
-        kind: char
+        format: string
         address: 546
+        default: true
       int_output:
-        kind: int
+        format: raw
         address: 548
     inputs:
       stdin:
@@ -41,7 +42,7 @@ max_trace: 60
 expected_output:
   char_output: |
     Hi
-  int_output: []
+  int_output: ''
 ast: |
   Program
   └─ body:
