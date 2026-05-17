@@ -79,7 +79,7 @@ config:
           - "\0"
 max_trace: 100
 expected_output:
-  default: 0 1 3 5
+  default: 1 3 4 5 8
 ast: |
   Program
   └─ body:
@@ -397,355 +397,105 @@ machine_code: |-
   Interrupt handlers:
     vector 0 -> 0x0007
 trace:
-  total_ticks: 6615
-  lines: "\e[36m\e[1m tick\e[0m: \e[32m     1\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mFETCH     \e[0m │ \e[36m\e[1m   pc\e[0m:\
-    \ \e[33m0x0000\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mHALT     0x00000000\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m\
-    \ \e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e\
-    [32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000000\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m     2\e[0m │ \e[36m\e\
-    [1mstate\e[0m: \e[35mEXECUTE   \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0001\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mCALL  \
-    \   0x00000083\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m\
-    \  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000000\e\
-    [0m\n\e[36m\e[1m tick\e[0m: \e[32m     3\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mEXECUTE   \e[0m │ \e[36m\e[1m   pc\e[0m:\
-    \ \e[33m0x0001\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mCALL     0x00000083\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m\
-    \ \e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e\
-    [32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m     4\e[0m │ \e[36m\e\
-    [1mstate\e[0m: \e[35mDONE      \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0083\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mCALL  \
-    \   0x00000083\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m\
-    \  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e\
-    [0m\n\e[36m\e[1m tick\e[0m: \e[32m     5\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mSTART     \e[0m │ \e[36m\e[1m   pc\e[0m:\
-    \ \e[33m0x0083\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mCALL     0x00000083\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m\
-    \ \e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e\
-    [32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m     6\e[0m │ \e[36m\e\
-    [1mstate\e[0m: \e[35mFETCH     \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0083\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mCALL  \
-    \   0x00000083\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m\
-    \  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e\
-    [0m\n\e[36m\e[1m tick\e[0m: \e[32m     7\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mEXECUTE   \e[0m │ \e[36m\e[1m   pc\e[0m:\
-    \ \e[33m0x0084\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mEI       0x00000000\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m\
-    \ \e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e\
-    [32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m     8\e[0m │ \e[36m\e\
-    [1mstate\e[0m: \e[35mDONE      \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0084\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mEI    \
-    \   0x00000000\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m\
-    \  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e\
-    [0m\n\e[36m\e[1m tick\e[0m: \e[32m     9\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mSTART     \e[0m │ \e[36m\e[1m   pc\e[0m:\
-    \ \e[33m0x0084\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mEI       0x00000000\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m\
-    \ \e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e\
-    [32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    10\e[0m │ \e[36m\e\
-    [1mstate\e[0m: \e[35mFETCH     \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0084\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mEI    \
-    \   0x00000000\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m\
-    \  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e\
-    [0m\n\e[36m\e[1m tick\e[0m: \e[32m    11\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mEXECUTE   \e[0m │ \e[36m\e[1m   pc\e[0m:\
-    \ \e[33m0x0085\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mPUSH     0x00000000\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m\
-    \ \e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e\
-    [32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    12\e[0m │ \e[36m\e\
-    [1mstate\e[0m: \e[35mDONE      \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0085\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mPUSH  \
-    \   0x00000000\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e\
-    [1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e\
-    [0m\n\e[36m\e[1m tick\e[0m: \e[32m    13\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mSTART     \e[0m │ \e[36m\e[1m   pc\e[0m:\
-    \ \e[33m0x0085\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mPUSH     0x00000000\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m\
-    \ \e[33m\e[1mZ\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m:\
-    \ \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    14\e[0m │ \e\
-    [36m\e[1mstate\e[0m: \e[35mFETCH     \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0085\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mPUSH\
-    \     0x00000000\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e\
-    [1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e\
-    [0m\n\e[36m\e[1m tick\e[0m: \e[32m    15\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mEXECUTE   \e[0m │ \e[36m\e[1m   pc\e[0m:\
-    \ \e[33m0x0086\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mDROP     0x00000000\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m\
-    \ \e[33m\e[1mZ\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m:\
-    \ \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    16\e[0m │ \e\
-    [36m\e[1mstate\e[0m: \e[35mDONE      \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0086\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mDROP\
-    \     0x00000000\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e\
-    [1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e\
-    [0m\n\e[36m\e[1m tick\e[0m: \e[32m    17\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mSTART     \e[0m │ \e[36m\e[1m   pc\e[0m:\
-    \ \e[33m0x0086\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mDROP     0x00000000\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m\
-    \ \e[33m\e[1mZ\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m:\
-    \ \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    18\e[0m │ \e\
-    [36m\e[1mstate\e[0m: \e[35mFETCH     \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0086\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mDROP\
-    \     0x00000000\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e\
-    [1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e\
-    [0m\n\e[36m\e[1m tick\e[0m: \e[32m    19\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mEXECUTE   \e[0m │ \e[36m\e[1m   pc\e[0m:\
-    \ \e[33m0x0087\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mLOAD     0x00000007\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m\
-    \ \e[33m\e[1mZ\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m:\
-    \ \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    20\e[0m │ \e\
-    [36m\e[1mstate\e[0m: \e[35mEXECUTE   \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0087\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mLOAD\
-    \     0x00000007\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e\
-    [1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e\
-    [0m\n\e[36m\e[1m tick\e[0m: \e[32m    21\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mEXECUTE   \e[0m │ \e[36m\e[1m   pc\e[0m:\
-    \ \e[33m0x0087\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mLOAD     0x00000007\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m\
-    \ \e[33m\e[1mZ\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m:\
-    \ \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    22\e[0m │ \e\
-    [36m\e[1mstate\e[0m: \e[35mDONE      \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0087\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mLOAD\
-    \     0x00000007\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e\
-    [1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e\
-    [0m\n\e[36m\e[1m tick\e[0m: \e[32m    23\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mSTART     \e[0m │ \e[36m\e[1m   pc\e[0m:\
-    \ \e[33m0x0087\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mLOAD     0x00000007\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m\
-    \ \e[33m\e[1mZ\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m:\
-    \ \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    24\e[0m │ \e\
-    [36m\e[1mstate\e[0m: \e[35mFETCH     \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0087\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mLOAD\
-    \     0x00000007\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e\
-    [1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e\
-    [0m\n\e[36m\e[1m tick\e[0m: \e[32m    25\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mEXECUTE   \e[0m │ \e[36m\e[1m   pc\e[0m:\
-    \ \e[33m0x0088\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mPUSH     0x00000000\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m\
-    \ \e[33m\e[1mZ\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m:\
-    \ \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    26\e[0m │ \e\
-    [36m\e[1mstate\e[0m: \e[35mDONE      \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0088\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mPUSH\
-    \     0x00000000\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e\
-    [1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e\
-    [0m\n\e[36m\e[1m tick\e[0m: \e[32m    27\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mSTART     \e[0m │ \e[36m\e[1m   pc\e[0m:\
-    \ \e[33m0x0088\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mPUSH     0x00000000\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m\
-    \ \e[33m\e[1mZ\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m:\
-    \ \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    28\e[0m │ \e\
-    [36m\e[1mstate\e[0m: \e[35mFETCH     \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0088\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mPUSH\
-    \     0x00000000\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e\
-    [1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e\
-    [0m\n\e[36m\e[1m tick\e[0m: \e[32m    29\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mEXECUTE   \e[0m │ \e[36m\e[1m   pc\e[0m:\
-    \ \e[33m0x0089\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mCMP      0x00000000\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m\
-    \ \e[33m\e[1mZ\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m:\
-    \ \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    30\e[0m │ \e\
-    [36m\e[1mstate\e[0m: \e[35mDONE      \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0089\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mCMP\
-    \      0x00000000\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e\
-    [36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e\
-    [32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    31\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mSTART     \e[0m │ \e[36m\e\
-    [1m   pc\e[0m: \e[33m0x0089\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mCMP      0x00000000\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e\
-    [2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m\
-    \  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    32\e\
-    [0m │ \e[36m\e[1mstate\e[0m: \e[35mFETCH     \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0089\e[0m │ \e[36m\e[1m   ir\e[0m:\
-    \ \e[37mCMP      0x00000000\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e[0m \e[2m·\e[0m\e\
-    [0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e\
-    [0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    33\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mEXECUTE   \e[0m │\
-    \ \e[36m\e[1m   pc\e[0m: \e[33m0x008A\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mDROP     0x00000000\e[0m │ \e[36m\e[1mflags\e\
-    [0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │\
-    \ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m:\
-    \ \e[32m    34\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mDONE      \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x008A\e[0m │ \e[36m\e\
-    [1m   ir\e[0m: \e[37mDROP     0x00000000\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e[0m\
-    \ \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e\
-    [36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    35\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mSTART\
-    \     \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x008A\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mDROP     0x00000000\e[0m │ \e[36m\e\
-    [1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e\
-    [0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e\
-    [0m: \e[32m    36\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mFETCH     \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x008A\e[0m │ \e\
-    [36m\e[1m   ir\e[0m: \e[37mDROP     0x00000000\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e\
-    [0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e\
-    [36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    37\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mEXECUTE\
-    \   \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x008B\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mDROP     0x00000000\e[0m │ \e[36m\e\
-    [1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e\
-    [0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e\
-    [0m: \e[32m    38\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mDONE      \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x008B\e[0m │ \e\
-    [36m\e[1m   ir\e[0m: \e[37mDROP     0x00000000\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e\
-    [0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e\
-    [36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    39\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mSTART\
-    \     \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x008B\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mDROP     0x00000000\e[0m │ \e[36m\e\
-    [1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e\
-    [0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e\
-    [0m: \e[32m    40\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mFETCH     \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x008B\e[0m │ \e\
-    [36m\e[1m   ir\e[0m: \e[37mDROP     0x00000000\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e\
-    [0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e\
-    [36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    41\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mEXECUTE\
-    \   \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x008C\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mJZ       0x0000008E\e[0m │ \e[36m\e\
-    [1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e\
-    [0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e\
-    [0m: \e[32m    42\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mDONE      \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x008E\e[0m │ \e\
-    [36m\e[1m   ir\e[0m: \e[37mJZ       0x0000008E\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e\
-    [0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e\
-    [36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    43\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mSTART\
-    \     \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x008E\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mJZ       0x0000008E\e[0m │ \e[36m\e\
-    [1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e\
-    [0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e\
-    [0m: \e[32m    44\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mFETCH     \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x008E\e[0m │ \e\
-    [36m\e[1m   ir\e[0m: \e[37mJZ       0x0000008E\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e\
-    [0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e\
-    [36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    45\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mEXECUTE\
-    \   \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x008F\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mPUSH     0x00000001\e[0m │ \e[36m\e\
-    [1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e\
-    [0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e\
-    [0m: \e[32m    46\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mDONE      \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x008F\e[0m │ \e\
-    [36m\e[1m   ir\e[0m: \e[37mPUSH     0x00000001\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m\
-    \ \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000001\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e\
-    [36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    47\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mSTART\
-    \     \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x008F\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mPUSH     0x00000001\e[0m │ \e[36m\e\
-    [1mflags\e[0m: \e[37m\e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000001\e\
-    [0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e\
-    [0m: \e[32m    48\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mFETCH     \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x008F\e[0m │ \e\
-    [36m\e[1m   ir\e[0m: \e[37mPUSH     0x00000001\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m\
-    \ \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000001\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e\
-    [36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    49\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mEXECUTE\
-    \   \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0090\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mPUSH     0x00000000\e[0m │ \e[36m\e\
-    [1mflags\e[0m: \e[37m\e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000001\e\
-    [0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e\
-    [0m: \e[32m    50\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mDONE      \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0090\e[0m │ \e\
-    [36m\e[1m   ir\e[0m: \e[37mPUSH     0x00000000\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e\
-    [0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000001\e[0m │ \e\
-    [36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    51\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mSTART\
-    \     \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0090\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mPUSH     0x00000000\e[0m │ \e[36m\e\
-    [1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e\
-    [0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000001\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e\
-    [0m: \e[32m    52\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mFETCH     \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0090\e[0m │ \e\
-    [36m\e[1m   ir\e[0m: \e[37mPUSH     0x00000000\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e\
-    [0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000001\e[0m │ \e\
-    [36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    53\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mEXECUTE\
-    \   \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0091\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mCMP      0x00000000\e[0m │ \e[36m\e\
-    [1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e\
-    [0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000001\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e\
-    [0m: \e[32m    54\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mDONE      \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0091\e[0m │ \e\
-    [36m\e[1m   ir\e[0m: \e[37mCMP      0x00000000\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m\
-    \ \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000001\e[0m │ \e\
-    [36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    55\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mSTART\
-    \     \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0091\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mCMP      0x00000000\e[0m │ \e[36m\e\
-    [1mflags\e[0m: \e[37m\e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e\
-    [0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000001\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e\
-    [0m: \e[32m    56\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mFETCH     \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0091\e[0m │ \e\
-    [36m\e[1m   ir\e[0m: \e[37mCMP      0x00000000\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m\
-    \ \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000001\e[0m │ \e\
-    [36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    57\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mEXECUTE\
-    \   \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0092\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mDROP     0x00000000\e[0m │ \e[36m\e\
-    [1mflags\e[0m: \e[37m\e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e\
-    [0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000001\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e\
-    [0m: \e[32m    58\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mDONE      \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0092\e[0m │ \e\
-    [36m\e[1m   ir\e[0m: \e[37mDROP     0x00000000\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m\
-    \ \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000001\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e\
-    [36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    59\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mSTART\
-    \     \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0092\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mDROP     0x00000000\e[0m │ \e[36m\e\
-    [1mflags\e[0m: \e[37m\e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000001\e\
-    [0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e\
-    [0m: \e[32m    60\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mFETCH     \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0092\e[0m │ \e\
-    [36m\e[1m   ir\e[0m: \e[37mDROP     0x00000000\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m\
-    \ \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000001\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e\
-    [36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    61\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mEXECUTE\
-    \   \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0093\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mDROP     0x00000000\e[0m │ \e[36m\e\
-    [1mflags\e[0m: \e[37m\e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000001\e\
-    [0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e\
-    [0m: \e[32m    62\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mDONE      \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0093\e[0m │ \e\
-    [36m\e[1m   ir\e[0m: \e[37mDROP     0x00000000\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m\
-    \ \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e\
-    [36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    63\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mSTART\
-    \     \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0093\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mDROP     0x00000000\e[0m │ \e[36m\e\
-    [1mflags\e[0m: \e[37m\e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e\
-    [0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e\
-    [0m: \e[32m    64\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mFETCH     \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0093\e[0m │ \e\
-    [36m\e[1m   ir\e[0m: \e[37mDROP     0x00000000\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m\
-    \ \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e\
-    [36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    65\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mEXECUTE\
-    \   \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0094\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mJZ       0x00000095\e[0m │ \e[36m\e\
-    [1mflags\e[0m: \e[37m\e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e\
-    [0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e\
-    [0m: \e[32m    66\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mDONE      \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0094\e[0m │ \e\
-    [36m\e[1m   ir\e[0m: \e[37mJZ       0x00000095\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m\
-    \ \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e\
-    [36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    67\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mSTART\
-    \     \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0094\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mJZ       0x00000095\e[0m │ \e[36m\e\
-    [1mflags\e[0m: \e[37m\e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e\
-    [0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e\
-    [0m: \e[32m    68\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mFETCH     \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0094\e[0m │ \e\
-    [36m\e[1m   ir\e[0m: \e[37mJZ       0x00000095\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m\
-    \ \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e\
-    [36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    69\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mEXECUTE\
-    \   \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0095\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mJMP      0x00000086\e[0m │ \e[36m\e\
-    [1mflags\e[0m: \e[37m\e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e\
-    [0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e\
-    [0m: \e[32m    70\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mDONE      \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0086\e[0m │ \e\
-    [36m\e[1m   ir\e[0m: \e[37mJMP      0x00000086\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m\
-    \ \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e\
-    [36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    71\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mSTART\
-    \     \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0086\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mJMP      0x00000086\e[0m │ \e[36m\e\
-    [1mflags\e[0m: \e[37m\e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e\
-    [0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e\
-    [0m: \e[32m    72\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mFETCH     \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0086\e[0m │ \e\
-    [36m\e[1m   ir\e[0m: \e[37mJMP      0x00000086\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m\
-    \ \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e\
-    [36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    73\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mEXECUTE\
-    \   \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0087\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mLOAD     0x00000007\e[0m │ \e[36m\e\
-    [1mflags\e[0m: \e[37m\e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e\
-    [0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e\
-    [0m: \e[32m    74\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mEXECUTE   \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0087\e[0m │ \e\
-    [36m\e[1m   ir\e[0m: \e[37mLOAD     0x00000007\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m\
-    \ \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e\
-    [36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    75\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mEXECUTE\
-    \   \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0087\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mLOAD     0x00000007\e[0m │ \e[36m\e\
-    [1mflags\e[0m: \e[37m\e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e\
-    [0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e\
-    [0m: \e[32m    76\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mDONE      \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0087\e[0m │ \e\
-    [36m\e[1m   ir\e[0m: \e[37mLOAD     0x00000007\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m\
-    \ \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e\
-    [36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    77\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mSTART\
-    \     \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0087\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mLOAD     0x00000007\e[0m │ \e[36m\e\
-    [1mflags\e[0m: \e[37m\e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e\
-    [0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e\
-    [0m: \e[32m    78\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mFETCH     \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0087\e[0m │ \e\
-    [36m\e[1m   ir\e[0m: \e[37mLOAD     0x00000007\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m\
-    \ \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e\
-    [36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    79\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mEXECUTE\
-    \   \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0088\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mPUSH     0x00000000\e[0m │ \e[36m\e\
-    [1mflags\e[0m: \e[37m\e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e\
-    [0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e\
-    [0m: \e[32m    80\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mDONE      \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0088\e[0m │ \e\
-    [36m\e[1m   ir\e[0m: \e[37mPUSH     0x00000000\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e\
-    [0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e\
-    [36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    81\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mSTART\
-    \     \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0088\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mPUSH     0x00000000\e[0m │ \e[36m\e\
-    [1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e\
-    [0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e\
-    [0m: \e[32m    82\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mFETCH     \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0088\e[0m │ \e\
-    [36m\e[1m   ir\e[0m: \e[37mPUSH     0x00000000\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e\
-    [0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e\
-    [36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    83\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mEXECUTE\
-    \   \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0089\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mCMP      0x00000000\e[0m │ \e[36m\e\
-    [1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e\
-    [0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e\
-    [0m: \e[32m    84\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mDONE      \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0089\e[0m │ \e\
-    [36m\e[1m   ir\e[0m: \e[37mCMP      0x00000000\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e\
-    [0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e\
-    [36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    85\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mSTART\
-    \     \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0089\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mCMP      0x00000000\e[0m │ \e[36m\e\
-    [1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e\
-    [0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e\
-    [0m: \e[32m    86\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mFETCH     \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x0089\e[0m │ \e\
-    [36m\e[1m   ir\e[0m: \e[37mCMP      0x00000000\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e\
-    [0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e\
-    [36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    87\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mEXECUTE\
-    \   \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x008A\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mDROP     0x00000000\e[0m │ \e[36m\e\
-    [1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e\
-    [0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e\
-    [0m: \e[32m    88\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mDONE      \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x008A\e[0m │ \e\
-    [36m\e[1m   ir\e[0m: \e[37mDROP     0x00000000\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e\
-    [0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e\
-    [36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    89\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mSTART\
-    \     \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x008A\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mDROP     0x00000000\e[0m │ \e[36m\e\
-    [1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e\
-    [0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e\
-    [0m: \e[32m    90\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mFETCH     \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x008A\e[0m │ \e\
-    [36m\e[1m   ir\e[0m: \e[37mDROP     0x00000000\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e\
-    [0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e\
-    [36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    91\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mEXECUTE\
-    \   \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x008B\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mDROP     0x00000000\e[0m │ \e[36m\e\
-    [1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e\
-    [0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e\
-    [0m: \e[32m    92\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mDONE      \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x008B\e[0m │ \e\
-    [36m\e[1m   ir\e[0m: \e[37mDROP     0x00000000\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e\
-    [0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e\
-    [36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    93\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mSTART\
-    \     \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x008B\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mDROP     0x00000000\e[0m │ \e[36m\e\
-    [1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e\
-    [0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e\
-    [0m: \e[32m    94\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mFETCH     \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x008B\e[0m │ \e\
-    [36m\e[1m   ir\e[0m: \e[37mDROP     0x00000000\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e\
-    [0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e\
-    [36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    95\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mEXECUTE\
-    \   \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x008C\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mJZ       0x0000008E\e[0m │ \e[36m\e\
-    [1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e\
-    [0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e\
-    [0m: \e[32m    96\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mDONE      \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x008E\e[0m │ \e\
-    [36m\e[1m   ir\e[0m: \e[37mJZ       0x0000008E\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e\
-    [0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e\
-    [36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    97\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mSTART\
-    \     \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x008E\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mJZ       0x0000008E\e[0m │ \e[36m\e\
-    [1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e\
-    [0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e\
-    [0m: \e[32m    98\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mFETCH     \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x008E\e[0m │ \e\
-    [36m\e[1m   ir\e[0m: \e[37mJZ       0x0000008E\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e\
-    [0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e\
-    [36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e[0m: \e[32m    99\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mEXECUTE\
-    \   \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x008F\e[0m │ \e[36m\e[1m   ir\e[0m: \e[37mPUSH     0x00000001\e[0m │ \e[36m\e\
-    [1mflags\e[0m: \e[37m\e[2m·\e[0m \e[33m\e[1mZ\e[0m \e[2m·\e[0m \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000000\e\
-    [0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e[36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m\n\e[36m\e[1m tick\e\
-    [0m: \e[32m   100\e[0m │ \e[36m\e[1mstate\e[0m: \e[35mDONE      \e[0m │ \e[36m\e[1m   pc\e[0m: \e[33m0x008F\e[0m │ \e\
-    [36m\e[1m   ir\e[0m: \e[37mPUSH     0x00000001\e[0m │ \e[36m\e[1mflags\e[0m: \e[37m\e[2m·\e[0m \e[2m·\e[0m \e[2m·\e[0m\
-    \ \e[2m·\e[0m\e[0m │ \e[36m\e[1m  tos\e[0m: \e[32m0x00000001\e[0m │ \e[36m\e[1m  nos\e[0m: \e[32m0x00000000\e[0m │ \e\
-    [36m\e[1m rtos\e[0m: \e[32m0x00000001\e[0m"
+  total_ticks: 6289
+  lines: |2-
+     tick:      1 │ state: FETCH      │    pc: 0x0000 │    ir: HALT     0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+     tick:      2 │ state: EXECUTE    │    pc: 0x0001 │    ir: CALL     0x00000083 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+     tick:      3 │ state: EXECUTE    │    pc: 0x0001 │    ir: CALL     0x00000083 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:      4 │ state: DONE       │    pc: 0x0083 │    ir: CALL     0x00000083 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:      5 │ state: START      │    pc: 0x0083 │    ir: CALL     0x00000083 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:      6 │ state: FETCH      │    pc: 0x0083 │    ir: CALL     0x00000083 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:      7 │ state: EXECUTE    │    pc: 0x0084 │    ir: EI       0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:      8 │ state: DONE       │    pc: 0x0084 │    ir: EI       0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:      9 │ state: START      │    pc: 0x0084 │    ir: EI       0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     10 │ state: FETCH      │    pc: 0x0084 │    ir: EI       0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     11 │ state: EXECUTE    │    pc: 0x0085 │    ir: PUSH     0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     12 │ state: DONE       │    pc: 0x0085 │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     13 │ state: START      │    pc: 0x0085 │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     14 │ state: FETCH      │    pc: 0x0085 │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     15 │ state: EXECUTE    │    pc: 0x0086 │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     16 │ state: DONE       │    pc: 0x0086 │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     17 │ state: START      │    pc: 0x0086 │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     18 │ state: FETCH      │    pc: 0x0086 │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     19 │ state: EXECUTE    │    pc: 0x0087 │    ir: LOAD     0x00000007 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     20 │ state: EXECUTE    │    pc: 0x0087 │    ir: LOAD     0x00000007 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     21 │ state: DONE       │    pc: 0x0087 │    ir: LOAD     0x00000007 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     22 │ state: START      │    pc: 0x0087 │    ir: LOAD     0x00000007 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     23 │ state: FETCH      │    pc: 0x0087 │    ir: LOAD     0x00000007 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     24 │ state: EXECUTE    │    pc: 0x0088 │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     25 │ state: DONE       │    pc: 0x0088 │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     26 │ state: START      │    pc: 0x0088 │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     27 │ state: FETCH      │    pc: 0x0088 │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     28 │ state: EXECUTE    │    pc: 0x0089 │    ir: CMP      0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     29 │ state: DONE       │    pc: 0x0089 │    ir: CMP      0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     30 │ state: START      │    pc: 0x0089 │    ir: CMP      0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     31 │ state: FETCH      │    pc: 0x0089 │    ir: CMP      0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     32 │ state: EXECUTE    │    pc: 0x008A │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     33 │ state: DONE       │    pc: 0x008A │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     34 │ state: START      │    pc: 0x008A │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     35 │ state: FETCH      │    pc: 0x008A │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     36 │ state: EXECUTE    │    pc: 0x008B │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     37 │ state: DONE       │    pc: 0x008B │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     38 │ state: START      │    pc: 0x008B │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     39 │ state: FETCH      │    pc: 0x008B │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     40 │ state: EXECUTE    │    pc: 0x008C │    ir: JZ       0x0000008E │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     41 │ state: DONE       │    pc: 0x008E │    ir: JZ       0x0000008E │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     42 │ state: START      │    pc: 0x008E │    ir: JZ       0x0000008E │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     43 │ state: FETCH      │    pc: 0x008E │    ir: JZ       0x0000008E │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     44 │ state: EXECUTE    │    pc: 0x008F │    ir: PUSH     0x00000001 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     45 │ state: DONE       │    pc: 0x008F │    ir: PUSH     0x00000001 │ flags: · · · · │   tos: 0x00000001 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     46 │ state: START      │    pc: 0x008F │    ir: PUSH     0x00000001 │ flags: · · · · │   tos: 0x00000001 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     47 │ state: FETCH      │    pc: 0x008F │    ir: PUSH     0x00000001 │ flags: · · · · │   tos: 0x00000001 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     48 │ state: EXECUTE    │    pc: 0x0090 │    ir: PUSH     0x00000000 │ flags: · · · · │   tos: 0x00000001 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     49 │ state: DONE       │    pc: 0x0090 │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000001 │  rtos: 0x00000001
+     tick:     50 │ state: START      │    pc: 0x0090 │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000001 │  rtos: 0x00000001
+     tick:     51 │ state: FETCH      │    pc: 0x0090 │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000001 │  rtos: 0x00000001
+     tick:     52 │ state: EXECUTE    │    pc: 0x0091 │    ir: CMP      0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000001 │  rtos: 0x00000001
+     tick:     53 │ state: DONE       │    pc: 0x0091 │    ir: CMP      0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000001 │  rtos: 0x00000001
+     tick:     54 │ state: START      │    pc: 0x0091 │    ir: CMP      0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000001 │  rtos: 0x00000001
+     tick:     55 │ state: FETCH      │    pc: 0x0091 │    ir: CMP      0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000001 │  rtos: 0x00000001
+     tick:     56 │ state: EXECUTE    │    pc: 0x0092 │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000001 │  rtos: 0x00000001
+     tick:     57 │ state: DONE       │    pc: 0x0092 │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000001 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     58 │ state: START      │    pc: 0x0092 │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000001 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     59 │ state: FETCH      │    pc: 0x0092 │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000001 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     60 │ state: EXECUTE    │    pc: 0x0093 │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000001 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     61 │ state: DONE       │    pc: 0x0093 │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     62 │ state: START      │    pc: 0x0093 │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     63 │ state: FETCH      │    pc: 0x0093 │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     64 │ state: EXECUTE    │    pc: 0x0094 │    ir: JZ       0x00000095 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     65 │ state: DONE       │    pc: 0x0094 │    ir: JZ       0x00000095 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     66 │ state: START      │    pc: 0x0094 │    ir: JZ       0x00000095 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     67 │ state: FETCH      │    pc: 0x0094 │    ir: JZ       0x00000095 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     68 │ state: EXECUTE    │    pc: 0x0095 │    ir: JMP      0x00000086 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     69 │ state: DONE       │    pc: 0x0086 │    ir: JMP      0x00000086 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     70 │ state: START      │    pc: 0x0086 │    ir: JMP      0x00000086 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     71 │ state: FETCH      │    pc: 0x0086 │    ir: JMP      0x00000086 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     72 │ state: EXECUTE    │    pc: 0x0087 │    ir: LOAD     0x00000007 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     73 │ state: EXECUTE    │    pc: 0x0087 │    ir: LOAD     0x00000007 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     74 │ state: DONE       │    pc: 0x0087 │    ir: LOAD     0x00000007 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     75 │ state: START      │    pc: 0x0087 │    ir: LOAD     0x00000007 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     76 │ state: FETCH      │    pc: 0x0087 │    ir: LOAD     0x00000007 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     77 │ state: EXECUTE    │    pc: 0x0088 │    ir: PUSH     0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     78 │ state: DONE       │    pc: 0x0088 │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     79 │ state: START      │    pc: 0x0088 │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     80 │ state: FETCH      │    pc: 0x0088 │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     81 │ state: EXECUTE    │    pc: 0x0089 │    ir: CMP      0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     82 │ state: DONE       │    pc: 0x0089 │    ir: CMP      0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     83 │ state: START      │    pc: 0x0089 │    ir: CMP      0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     84 │ state: FETCH      │    pc: 0x0089 │    ir: CMP      0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     85 │ state: EXECUTE    │    pc: 0x008A │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     86 │ state: DONE       │    pc: 0x008A │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     87 │ state: START      │    pc: 0x008A │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     88 │ state: FETCH      │    pc: 0x008A │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     89 │ state: EXECUTE    │    pc: 0x008B │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     90 │ state: DONE       │    pc: 0x008B │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     91 │ state: START      │    pc: 0x008B │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     92 │ state: FETCH      │    pc: 0x008B │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     93 │ state: EXECUTE    │    pc: 0x008C │    ir: JZ       0x0000008E │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     94 │ state: DONE       │    pc: 0x008E │    ir: JZ       0x0000008E │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     95 │ state: START      │    pc: 0x008E │    ir: JZ       0x0000008E │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     96 │ state: FETCH      │    pc: 0x008E │    ir: JZ       0x0000008E │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     97 │ state: EXECUTE    │    pc: 0x008F │    ir: PUSH     0x00000001 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     98 │ state: DONE       │    pc: 0x008F │    ir: PUSH     0x00000001 │ flags: · · · · │   tos: 0x00000001 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:     99 │ state: START      │    pc: 0x008F │    ir: PUSH     0x00000001 │ flags: · · · · │   tos: 0x00000001 │   nos: 0x00000000 │  rtos: 0x00000001
+     tick:    100 │ state: INTERRUPT  │    pc: 0x008F │    ir: PUSH     0x00000001 │ flags: · · · · │   tos: 0x00000001 │   nos: 0x00000000 │  rtos: 0x00000001

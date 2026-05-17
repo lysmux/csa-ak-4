@@ -1,6 +1,7 @@
 from app.isa.flag import Flag
 from app.isa.instruction import Instruction
 from app.isa.opcode import Opcode
+
 from tests.shared import run_simulation
 
 

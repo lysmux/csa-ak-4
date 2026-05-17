@@ -2,6 +2,7 @@ import pytest
 from app.isa.flag import Flag
 from app.isa.instruction import Instruction
 from app.isa.opcode import Opcode
+
 from tests.shared import run_simulation
 
 
@@ -348,15 +349,40 @@ def test_xor_flag_z():
     assert snapshot.flags == Flag.Z
 
 
-@pytest.mark.skip(reason="Need fix")
 def test_not():
+    # 32-bit bitwise inversion: ~0x00000005 = 0xFFFFFFFA
     instructions = [
         Instruction(Opcode.PUSH, 0b101),
         Instruction(Opcode.NOT),
         Instruction(Opcode.HALT),
     ]
     snapshot = run_simulation(instructions, {})
-    assert snapshot.tos == 0b010
+    assert snapshot.tos == 0xFFFFFFFA
+    assert snapshot.flags == Flag.N
+
+
+def test_not_flag_z():
+    # ~0xFFFFFFFF = 0 → Z
+    instructions = [
+        Instruction(Opcode.PUSH, 0xFFFFFFFF),
+        Instruction(Opcode.NOT),
+        Instruction(Opcode.HALT),
+    ]
+    snapshot = run_simulation(instructions, {})
+    assert snapshot.tos == 0x0
+    assert snapshot.flags == Flag.Z
+
+
+def test_not_flag_n():
+    # ~0 = 0xFFFFFFFF → N
+    instructions = [
+        Instruction(Opcode.PUSH, 0x0),
+        Instruction(Opcode.NOT),
+        Instruction(Opcode.HALT),
+    ]
+    snapshot = run_simulation(instructions, {})
+    assert snapshot.tos == 0xFFFFFFFF
+    assert snapshot.flags == Flag.N
 
 
 def test_shl():

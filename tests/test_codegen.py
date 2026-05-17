@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 from app.config import OutputDeviceConfig
 from app.isa.instruction import Instruction
@@ -8,19 +10,20 @@ from app.translator.parser import Parser
 
 _OUT_ADDR = 0x222
 _OUTPUTS = {"default": OutputDeviceConfig(address=_OUT_ADDR, default=True)}
+_EXAMPLE_SRC = Path("examples/example.cube")
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-def compile(src: str) -> CompiledProgram:
+def compile_src(src: str) -> CompiledProgram:
     tokens = Lexer(src).tokenize()
     ast = Parser(tokens).parse()
     return CodeGen(output_devices=_OUTPUTS).generate(ast, require_entry_point=False)
 
 
 def instrs(src: str) -> list[Instruction]:
-    return [Instruction.from_binary(w) for w in compile(src).instructions]
+    return [Instruction.from_binary(w) for w in compile_src(src).instructions]
 
 
 def opcodes(src: str) -> list[Opcode]:
@@ -46,18 +49,18 @@ def test_empty_program():
 
 def test_number_static_init():
     # Значение известно → прямо в data, без PUSH/STORE
-    result = compile("const x: int = 42;")
+    result = compile_src("const x: int = 42;")
     assert result.data == [42]
     assert opcodes("const x: int = 42;") == [Opcode.HALT]
 
 
 def test_bool_true_static_init():
-    result = compile("const x: bool = true;")
+    result = compile_src("const x: bool = true;")
     assert result.data == [1]
 
 
 def test_bool_false_static_init():
-    result = compile("const x: bool = false;")
+    result = compile_src("const x: bool = false;")
     assert result.data == [0]
 
 
@@ -73,7 +76,7 @@ def test_string_push_zero():
 
 def test_first_var_addr_zero():
     # var с литералом: data[0] = 1 (static), + PUSH 1; STORE 0 (runtime re-init)
-    result = compile("var x: int = 1;")
+    result = compile_src("var x: int = 1;")
     assert result.data == [1]
     ops = opcodes("var x: int = 1;")
     assert Opcode.PUSH in ops
@@ -82,17 +85,17 @@ def test_first_var_addr_zero():
 
 
 def test_second_var_addr_one():
-    result = compile("var a: int = 1; var b: int = 2;")
+    result = compile_src("var a: int = 1; var b: int = 2;")
     assert result.data == [1, 2]
 
 
 def test_data_section_size():
-    result = compile("var a: int = 1; var b: int = 2; var c: int = 3;")
+    result = compile_src("var a: int = 1; var b: int = 2; var c: int = 3;")
     assert len(result.data) == 3
 
 
 def test_data_section_static_init():
-    result = compile("var x: int = 99;")
+    result = compile_src("var x: int = 99;")
     assert result.data == [99]
 
 
@@ -105,7 +108,7 @@ def test_ident_load():
 
 
 def test_shadowing_allocates_new_addr():
-    result = compile("var x: int = 1; if (true) { var x: int = 2; }")
+    result = compile_src("var x: int = 1; if (true) { var x: int = 2; }")
     assert len(result.data) == 2
 
 
@@ -438,21 +441,18 @@ def test_all_jump_targets_in_range():
 # ---------------------------------------------------------------------------
 
 def test_full_example_compiles():
-    src = open("examples/example.cube").read()
-    result = compile(src)
+    result = compile_src(_EXAMPLE_SRC.read_text(encoding="utf-8"))
     assert len(result.instructions) > 0
     assert Instruction.from_binary(result.instructions[-1]).opcode == Opcode.HALT
 
 
 def test_full_example_instruction_count():
-    src = open("examples/example.cube").read()
-    result = compile(src)
+    result = compile_src(_EXAMPLE_SRC.read_text(encoding="utf-8"))
     assert len(result.instructions) == 100
 
 
 def test_full_example_data_count():
-    src = open("examples/example.cube").read()
-    result = compile(src)
+    result = compile_src(_EXAMPLE_SRC.read_text(encoding="utf-8"))
     assert len(result.data) == 13
 
 

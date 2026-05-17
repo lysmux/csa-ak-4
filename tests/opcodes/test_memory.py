@@ -1,5 +1,6 @@
 from app.isa.instruction import Instruction
 from app.isa.opcode import Opcode
+
 from tests.shared import run_simulation
 
 
@@ -25,4 +26,3 @@ def test_store():
     snapshot = run_simulation(instructions, memory)
 
     assert snapshot.data_memory[0] == 0x1
-

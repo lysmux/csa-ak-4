@@ -267,8 +267,7 @@ class ControlUnit:
     def _execute_pshr(self) -> None:
         match self._step:
             case 0:
-                # self.data_path.latch_dr(self.data_path.stack.tos)
-                self.write_r_stack(RStackMux.ALU)
+                self._return_stack.push(self.data_path.stack.tos)
                 self.data_path.pop()
                 self._complete_instruction()
             case _:
@@ -324,10 +323,10 @@ class ControlUnit:
                 self.data_path.latch_ar(self.data_path.stack.tos)
                 self.data_path.pop_raw()
                 self._advance_step()
-            case 2:
+            case 1:
                 self.data_path.write(self.data_path.stack.tos)
                 self.data_path.pop_raw()
-                self._advance_step()
+                self._complete_instruction()
             case _:
                 self._invalid_step()
 
