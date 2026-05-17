@@ -5,15 +5,15 @@ import io
 from pathlib import Path
 
 import yaml
-from app.config import Config
+from app.config import Config, InputDeviceConfig
 from app.isa.instruction import Instruction
 from app.simulation.control_unit import ControlUnit
 from app.simulation.data_path import DataPath
-from app.simulation.io import CharInput, CharOutput, IntOutput
+from app.simulation.io import Device, Input, Output
 from app.simulation.memory import Memory
 from app.simulation.stack import Stack
 from app.translator.analyzer import Analyzer
-from app.translator.codegen import CodeGen, CompiledProgram, InputDevice, OutputDevice
+from app.translator.codegen import CodeGen, CompiledProgram
 from app.translator.lexer import Lexer
 from app.translator.nodes import print_ast
 from app.translator.parser import Parser
@@ -60,17 +60,14 @@ def pytest_addoption(parser: object) -> None:
 
 def compile_source(
     src: str,
-    output_devices: dict[str, OutputDevice],
-    input_devices: dict[str, InputDevice] | None = None,
+    output_address: int,
+    input_devices: dict[str, InputDeviceConfig] | None = None,
 ) -> tuple[object, CompiledProgram]:
     tokens = Lexer(src).tokenize()
     ast = Parser(tokens).parse()
-    Analyzer(
-        output_devices=set(output_devices),
-        input_devices=set(input_devices or {}),
-    ).analyze(ast)
+    Analyzer(input_devices=set(input_devices or {})).analyze(ast)
     program = CodeGen(
-        output_devices=output_devices,
+        output_address=output_address,
         input_devices=input_devices or {},
     ).generate(ast)
     return ast, program
@@ -102,7 +99,7 @@ def run_golden(
     program: CompiledProgram,
     config: Config,
     max_trace: int = 60,
-) -> tuple[ControlUnit, dict[str, CharOutput], dict[str, IntOutput], list[str]]:
+) -> tuple[ControlUnit, Output, list[str]]:
     instr_mem = Memory(config.memory_size.instruction)
     instr_mem.fill(program.instructions)
     data_mem = Memory(config.memory_size.data)
@@ -110,34 +107,21 @@ def run_golden(
     rs = Stack(config.stack_size.ret)
     ds = Stack(config.stack_size.data)
 
-    io_map: dict[int, object] = {}
-    char_devs: dict[str, CharOutput] = {}
-    int_devs: dict[str, IntOutput] = {}
-    seen_addrs: set[int] = set()
-
-    for name, cfg in config.io.outputs.items():
-        if cfg.address not in seen_addrs:
-            dev: CharOutput | IntOutput = (
-                CharOutput() if cfg.kind == "char" else IntOutput()
-            )
-            io_map[cfg.address] = dev
-            seen_addrs.add(cfg.address)
-        dev = io_map[cfg.address]
-        (char_devs if cfg.kind == "char" else int_devs)[name] = dev  # type: ignore[index]
-
-    for name, cfg in config.io.inputs.items():
+    output = Output(format=config.io.output.format)
+    io_map: dict[int, Device] = {config.io.output.address: output}
+    for cfg in config.io.inputs.values():
         if cfg.address not in io_map:
-            io_map[cfg.address] = CharInput(
+            io_map[cfg.address] = Input(
                 schedule=list(cfg.schedule), vector=cfg.vector
             )
 
-    from app.cli import _trace_line
+    from app.cli.trace import trace_line
 
     trace: list[str] = []
 
     def on_tick(cu: ControlUnit) -> None:
         if len(trace) < max_trace:
-            trace.append(_trace_line(cu))
+            trace.append(trace_line(cu))
 
     dp = DataPath(memory=data_mem, stack=ds, io_map=io_map)
     cu = ControlUnit(
@@ -147,7 +131,7 @@ def run_golden(
         vector_table=dict(program.interrupt_handlers),
     )
     cu.run(limit=config.limit, on_tick=on_tick)
-    return cu, char_devs, int_devs, trace
+    return cu, output, trace
 
 
 # ---------------------------------------------------------------------------
@@ -163,18 +147,14 @@ def build_snapshot(
     dbg: str,
     trace_lines: list[str],
     total_ticks: int,
-    char_out: str,
-    int_out: list[int],
+    output: str,
 ) -> dict:
     return {
         "name": name,
         "source": _lit(source),
         "config": config_dict,
         "max_trace": max_trace,
-        "expected_output": {
-            "char_output": _lit(char_out) if "\n" in char_out or len(char_out) > 40 else char_out,
-            "int_output": int_out,
-        },
+        "expected_output": _lit(output) if "\n" in output or len(output) > 40 else output,
         "ast": _lit(ast_dump),
         "machine_code": _lit(dbg),
         "trace": {
@@ -201,22 +181,10 @@ def run_and_snapshot(name: str, yaml_path: Path, max_trace: int) -> tuple[dict, 
     config_dict = stored["config"]
     config = Config.model_validate(config_dict)
 
-    out_devs = {
-        n: OutputDevice(address=cfg.address, kind=cfg.kind)
-        for n, cfg in config.io.outputs.items()
-    }
-    in_devs = {
-        n: InputDevice(address=cfg.address, vector=cfg.vector)
-        for n, cfg in config.io.inputs.items()
-    }
+    in_devs = config.io.inputs
 
-    ast, prog = compile_source(source, out_devs, in_devs)
-    cu, char_devs, int_devs, trace = run_golden(prog, config, max_trace=max_trace)
-
-    char_out = "".join(d.string for d in char_devs.values())
-    int_out: list[int] = []
-    for d in int_devs.values():
-        int_out.extend(d.buffer)
+    ast, prog = compile_source(source, config.io.output.address, in_devs)
+    cu, output, trace = run_golden(prog, config, max_trace=max_trace)
 
     snap = build_snapshot(
         name=name,
@@ -227,7 +195,6 @@ def run_and_snapshot(name: str, yaml_path: Path, max_trace: int) -> tuple[dict, 
         dbg=build_dbg(prog),
         trace_lines=trace,
         total_ticks=cu.snapshot.tick,
-        char_out=char_out,
-        int_out=int_out,
+        output=output.as_string(),
     )
     return snap, dump_snapshot(snap)

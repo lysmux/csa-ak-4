@@ -2,7 +2,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from app.isa.consts import MAX_SIGNED, MIN_SIGNED, SIGN_BIT, WORD_MASK, WORD_WIDTH
-from app.isa.flags import Flags
+from app.isa.flag import Flag
 from app.isa.opcode import Opcode
 
 type BinaryOp = Callable[[int, int], int]
@@ -12,7 +12,7 @@ type UnaryOp = Callable[[int], int]
 @dataclass(frozen=True)
 class AluResult:
     value: int
-    flags: Flags
+    flags: Flag
 
 
 def _signed(value: int) -> int:
@@ -80,53 +80,53 @@ class Alu:
         return AluResult(value, flags)
 
     @staticmethod
-    def _flags_binary(opcode: Opcode, a: int, b: int, value: int) -> Flags:
-        flags = Flags.nz(value)
+    def _flags_binary(opcode: Opcode, a: int, b: int, value: int) -> Flag:
+        flags = Flag.nz(value)
 
         if opcode == Opcode.ADD:
             if a + b > WORD_MASK:
-                flags |= Flags.C
+                flags |= Flag.C
             if (a ^ value) & (b ^ value) & SIGN_BIT:
-                flags |= Flags.V
+                flags |= Flag.V
         elif opcode in (Opcode.SUB, Opcode.CMP):
             if a < b:
-                flags |= Flags.C
+                flags |= Flag.C
             if (a ^ b) & (a ^ value) & SIGN_BIT:
-                flags |= Flags.V
+                flags |= Flag.V
         elif opcode == Opcode.MUL:
             signed_product = _signed(a) * _signed(b)
             if signed_product < MIN_SIGNED or signed_product > MAX_SIGNED:
-                flags |= Flags.V | Flags.C
+                flags |= Flag.V | Flag.C
         elif opcode == Opcode.DIV:
             if _signed(a) == MIN_SIGNED and _signed(b) == -1:
-                flags |= Flags.V
+                flags |= Flag.V
 
         return flags
 
     @staticmethod
-    def _flags_unary(opcode: Opcode, a: int, value: int) -> Flags:
-        flags = Flags.nz(value)
+    def _flags_unary(opcode: Opcode, a: int, value: int) -> Flag:
+        flags = Flag.nz(value)
 
         if opcode == Opcode.INC:
             if a == WORD_MASK:
-                flags |= Flags.C
+                flags |= Flag.C
             if _signed(a) == MAX_SIGNED:
-                flags |= Flags.V
+                flags |= Flag.V
         elif opcode == Opcode.DEC:
             if a == 0:
-                flags |= Flags.C
+                flags |= Flag.C
             if _signed(a) == MIN_SIGNED:
-                flags |= Flags.V
+                flags |= Flag.V
         elif opcode == Opcode.NEG:
             if a != 0:
-                flags |= Flags.C
+                flags |= Flag.C
             if _signed(a) == MIN_SIGNED:
-                flags |= Flags.V
+                flags |= Flag.V
         elif opcode == Opcode.SHL:
             if a & SIGN_BIT:
-                flags |= Flags.C
+                flags |= Flag.C
         elif opcode == Opcode.SHR:
             if a & 1:
-                flags |= Flags.C
+                flags |= Flag.C
 
         return flags

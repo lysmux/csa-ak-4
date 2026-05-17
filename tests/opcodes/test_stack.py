@@ -1,4 +1,4 @@
-from app.isa.flags import Flags
+from app.isa.flag import Flag
 from app.isa.instruction import Instruction
 from app.isa.opcode import Opcode
 from tests.shared import run_simulation
@@ -69,7 +69,8 @@ def test_over():
     assert snapshot.data_stack[2] == 0x123
 
 
-def test_drop_flag_z():
+def test_drop_preserves_flags():
+    # DROP does not modify FLAGS; flags reflect the last PUSH (0x1 → no flags)
     instructions = [
         Instruction(Opcode.PUSH, 0x0),
         Instruction(Opcode.PUSH, 0x1),
@@ -78,10 +79,12 @@ def test_drop_flag_z():
     ]
     snapshot = run_simulation(instructions, {})
     assert snapshot.tos == 0x0
-    assert snapshot.flags == Flags.Z
+    # FLAGS were last set by PUSH 0x1 (not zero, not negative) → no flags
+    assert snapshot.flags == Flag(0)
 
 
-def test_drop_flag_n():
+def test_drop_does_not_set_n():
+    # DROP does not set N even though new TOS has bit 31
     instructions = [
         Instruction(Opcode.PUSH, 0x80000000),
         Instruction(Opcode.PUSH, 0x1),
@@ -90,4 +93,5 @@ def test_drop_flag_n():
     ]
     snapshot = run_simulation(instructions, {})
     assert snapshot.tos == 0x80000000
-    assert snapshot.flags == Flags.N
+    # FLAGS were set by PUSH 0x1 → no flags
+    assert snapshot.flags == Flag(0)

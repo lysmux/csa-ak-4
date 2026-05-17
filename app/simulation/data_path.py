@@ -1,4 +1,4 @@
-from app.isa.flags import Flags
+from app.isa.flag import Flag
 from app.isa.opcode import Opcode
 from app.simulation.alu import Alu
 from app.simulation.io import Device
@@ -7,12 +7,17 @@ from app.simulation.stack import Stack
 
 
 class DataPath:
-    def __init__(self, memory: Memory, stack: Stack, io_map: dict[int, Device]) -> None:
+    def __init__(
+        self,
+        memory: Memory,
+        stack: Stack,
+        io_map: dict[int, Device],
+    ) -> None:
         self.memory = memory
         self.stack = stack
         self.io_map = io_map
 
-        self._flags: Flags = Flags(0)
+        self._flags: Flag = Flag(0)
         self._alu = Alu()
 
         self._dr = 0
@@ -22,12 +27,12 @@ class DataPath:
         self._nos = 0
 
     @property
-    def flags(self) -> Flags:
+    def flags(self) -> Flag:
         return self._flags
 
     @flags.setter
     def flags(self, value: int) -> None:
-        self._flags = Flags(value)
+        self._flags = Flag(value)
 
     def latch_ar(self, value: int) -> None:
         self._ar = value
@@ -45,7 +50,7 @@ class DataPath:
 
     def push(self, value: int) -> None:
         self.stack.push(value)
-        self._flags = Flags.nz(value)
+        self._flags = Flag.nz(value)
 
     def cmp(self) -> None:
         result = self._alu.perform(Opcode.SUB, self.stack.nos, self.stack.tos)
@@ -53,7 +58,7 @@ class DataPath:
 
     def pop(self) -> int:
         result = self.stack.pop()
-        self._flags = Flags.nz(self.stack.tos)
+        self._flags = Flag.nz(self.stack.tos)
         return result
 
     def write(self, address: int, value: int) -> None:
@@ -65,5 +70,4 @@ class DataPath:
     def read(self, address: int) -> int:
         if device := self.io_map.get(address):
             return device.read()
-        else:
-            return self.memory.read(address)
+        return self.memory.read(address)

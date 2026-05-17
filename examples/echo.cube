@@ -1,5 +1,5 @@
 interrupt 0 on_input() {
-    print(getchar());
+    print(read());
 }
 
 fun main() {

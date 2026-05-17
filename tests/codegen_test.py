@@ -5,14 +5,16 @@ from app.translator.codegen import CodeGen, CodeGenError, CompiledProgram
 from app.translator.lexer import Lexer
 from app.translator.parser import Parser
 
+_OUT_ADDR = 0x222
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 def compile(src: str) -> CompiledProgram:
-    tokens = Lexer().tokenize(src)
+    tokens = Lexer(src).tokenize()
     ast = Parser(tokens).parse()
-    return CodeGen().generate(ast)
+    return CodeGen(output_address=_OUT_ADDR).generate(ast, require_entry_point=False)
 
 
 def instrs(src: str) -> list[Instruction]:
@@ -68,10 +70,13 @@ def test_string_push_zero():
 # ---------------------------------------------------------------------------
 
 def test_first_var_addr_zero():
-    # var с литералом → static init, data[0] = 1
+    # var с литералом: data[0] = 1 (static), + PUSH 1; STORE 0 (runtime re-init)
     result = compile("var x: int = 1;")
     assert result.data == [1]
-    assert opcodes("var x: int = 1;") == [Opcode.HALT]
+    ops = opcodes("var x: int = 1;")
+    assert Opcode.PUSH in ops
+    assert Opcode.STORE in ops
+    assert ops[-1] == Opcode.HALT
 
 
 def test_second_var_addr_one():
@@ -90,10 +95,11 @@ def test_data_section_static_init():
 
 
 def test_ident_load():
-    # var x = 5 → data[0]=5 без кода; var y = x → LOAD x; STORE y
+    # var x = 5 → PUSH 5; STORE 0; var y = x → LOAD 0; STORE 1
     i = instrs("var x: int = 5; var y: int = x;")
-    assert i[0] == Instruction(Opcode.LOAD, 0)   # x — var, не const
-    assert i[1] == Instruction(Opcode.STORE, 1)
+    load_idx = next(j for j, instr in enumerate(i) if instr.opcode == Opcode.LOAD)
+    assert i[load_idx] == Instruction(Opcode.LOAD, 0)
+    assert i[load_idx + 1] == Instruction(Opcode.STORE, 1)
 
 
 def test_shadowing_allocates_new_addr():
@@ -106,10 +112,11 @@ def test_shadowing_allocates_new_addr():
 # ---------------------------------------------------------------------------
 
 def test_assign_stores_to_correct_addr():
-    # var x = 0 → static init; x = 7 → PUSH 7; STORE 0
+    # var x = 0 → PUSH 0; STORE 0; x = 7 → PUSH 7; STORE 0
     i = instrs("var x: int = 0; x = 7;")
-    assert i[0] == Instruction(Opcode.PUSH, 7)
-    assert i[1] == Instruction(Opcode.STORE, 0)
+    push7_idx = next(j for j, instr in enumerate(i)
+                     if instr.opcode == Opcode.PUSH and instr.operand == 7)
+    assert i[push7_idx + 1] == Instruction(Opcode.STORE, 0)
 
 
 # ---------------------------------------------------------------------------
@@ -276,12 +283,6 @@ def test_if_no_else_no_else_code():
     assert len(i_with) > len(i_without)
 
 
-def test_if_empty_condition_no_condition_code():
-    # if () {} — cond is None, no flag-test code emitted
-    i = instrs("if () {}")
-    # Only JMP (skip else) and HALT — no CMP/JZ from condition
-    assert Opcode.JZ not in [x.opcode for x in i]
-
 
 def test_else_if_chain():
     ops = opcodes("var a: bool = true; var b: bool = false; if (a) { } else if (b) { }")
@@ -395,19 +396,18 @@ def test_builtin_print_no_call():
     assert Opcode.CALL not in opcodes('print("x");')
 
 
-def test_builtin_println_drops_arg():
-    i = instrs('println("hello");')
-    # arg is pushed (PUSH 0 for string) then DROPped
-    ops = [x.opcode for x in i]
-    push_idx = ops.index(Opcode.PUSH)
-    assert ops[push_idx + 1] == Opcode.DROP
+def test_builtin_print_emits_store():
+    ops = opcodes('print("hello");')
+    assert Opcode.STORE in ops
+    assert Opcode.LOADI in ops   # cstr loop uses LOADI
 
 
 def test_builtin_leaves_push_zero():
-    # builtin → PUSH 0 (dummy return) → ExprStmt DROP
+    # builtin → PUSH 0 (dummy return) → ExprStmt DROP → HALT
     i = instrs('print("x");')
-    # should have DROP as second-to-last before HALT
+    assert i[-1].opcode == Opcode.HALT
     assert i[-2].opcode == Opcode.DROP
+    assert i[-3].opcode == Opcode.PUSH and i[-3].operand == 0
 
 
 # ---------------------------------------------------------------------------
@@ -445,13 +445,13 @@ def test_full_example_compiles():
 def test_full_example_instruction_count():
     src = open("examples/example.cube").read()
     result = compile(src)
-    assert len(result.instructions) == 83
+    assert len(result.instructions) == 100
 
 
 def test_full_example_data_count():
     src = open("examples/example.cube").read()
     result = compile(src)
-    assert len(result.data) == 5
+    assert len(result.data) == 13
 
 
 # ---------------------------------------------------------------------------
@@ -462,11 +462,11 @@ def test_undefined_var_raises():
     from app.translator.nodes import ExprStmt, Ident, Program
     prog = Program([ExprStmt(Ident("unknown"))])
     with pytest.raises(CodeGenError, match="undefined variable"):
-        CodeGen().generate(prog)
+        CodeGen(output_address=_OUT_ADDR).generate(prog, require_entry_point=False)
 
 
 def test_undefined_function_raises():
     from app.translator.nodes import Call, ExprStmt, Program
     prog = Program([ExprStmt(Call("no_such_fun", []))])
     with pytest.raises(CodeGenError, match="undefined function"):
-        CodeGen().generate(prog)
+        CodeGen(output_address=_OUT_ADDR).generate(prog, require_entry_point=False)

@@ -10,32 +10,18 @@ from app.cli.helpers import Output, ReadableFile, WritableFile, load_config
 from app.config import Config
 from app.isa.instruction import Instruction
 from app.translator.analyzer import Analyzer
-from app.translator.codegen import CodeGen, CompiledProgram, InputDevice, OutputDevice
+from app.translator.codegen import CodeGen, CompiledProgram
 from app.translator.lexer import Lexer
 from app.translator.parser import Parser
 
 
-def _output_devices(config: Config) -> dict[str, OutputDevice]:
-    return {name: OutputDevice(address=cfg.address) for name, cfg in config.io.outputs.items()}
-
-
-def _input_devices(config: Config) -> dict[str, InputDevice]:
-    return {name: InputDevice(address=cfg.address, vector=cfg.vector) for name, cfg in config.io.inputs.items()}
-
-
 def compile_source(source: Path, config: Config) -> CompiledProgram:
-    output_devices = _output_devices(config)
-    input_devices = _input_devices(config)
-
     tokens = Lexer(source.read_text(encoding="utf-8")).tokenize()
     ast = Parser(tokens).parse()
-    Analyzer(
-        output_devices=set(output_devices),
-        input_devices=set(input_devices),
-    ).analyze(ast)
+    Analyzer(input_devices=set(config.io.inputs)).analyze(ast)
     return CodeGen(
-        output_devices=output_devices,
-        input_devices=input_devices,
+        output_address=config.io.output.address,
+        input_devices=config.io.inputs,
     ).generate(ast)
 
 

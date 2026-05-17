@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import Never
 
 from app.translator.nodes import (
     ArrayDecl,
     AssignStmt,
+    ASTNode,
     BinaryOp,
     Block,
     Bool,
@@ -19,6 +21,7 @@ from app.translator.nodes import (
     IndexExpr,
     InterruptDecl,
     Number,
+    Op,
     PostfixOp,
     Program,
     ReturnStmt,
@@ -28,35 +31,49 @@ from app.translator.nodes import (
     WhileStmt,
 )
 
-_NUMERIC = frozenset({"byte", "int"})
-_ARITH_OPS = frozenset({"PLUS", "MINUS", "STAR", "SLASH"})
-_CMP_OPS = frozenset({"EQUAL", "NOT_EQUAL", "LESS_THAN", "GREATER_THAN", "LESS_THAN_OR_EQUAL", "GREATER_THAN_OR_EQUAL"})
-_LOGIC_OPS = frozenset({"AND", "OR", "XOR"})
-_INCR_OPS = frozenset({"INCREMENT", "DECREMENT"})
 
-# Встроенные функции — допустимы без объявления, arity=None означает любое число аргументов
-_BUILTINS: dict[str, int | None] = {
-    "print": None,
-    "println": None,
-    "getchar": None,
-    "addc": 2,
-    "enable_interrupts": 0,
-    "disable_interrupts": 0,
+class Type(StrEnum):
+    INT = "int"
+    BOOL = "bool"
+    STRING = "string"
+    ARRAY = "array"
+    FUN = "fun"
+    INTERRUPT = "interrupt"
+    INPUT_DEVICE = "input_device"
+
+
+NUMERIC = {Type.INT}
+ARITH_OPS = {Op.PLUS, Op.MINUS, Op.STAR, Op.SLASH}
+CMP_OPS = {Op.EQUAL, Op.NOT_EQUAL, Op.LESS_THAN, Op.GREATER_THAN, Op.LESS_THAN_OR_EQUAL, Op.GREATER_THAN_OR_EQUAL}
+LOGIC_OPS = {Op.AND, Op.OR, Op.XOR}
+INCR_OPS = {Op.INCREMENT, Op.DECREMENT}
+
+PRINTABLE = {Type.STRING, Type.INT, Type.BOOL}
+
+
+@dataclass(frozen=True)
+class BuiltinSpec:
+    params: list[Type] | None
+    return_type: Type | None
+
+
+BUILTINS: dict[str, BuiltinSpec] = {
+    "print": BuiltinSpec(params=None, return_type=None),
+    "read": BuiltinSpec(params=None, return_type=Type.INT),
+    "addc": BuiltinSpec(params=[Type.INT, Type.INT], return_type=Type.INT),
+    "enable_interrupts": BuiltinSpec(params=[], return_type=None),
+    "disable_interrupts": BuiltinSpec(params=[], return_type=None),
 }
-
-
-# ---------------------------------------------------------------------------
-# Symbol table
-# ---------------------------------------------------------------------------
 
 
 @dataclass
 class Symbol:
     name: str
-    type_name: str  # 'byte', 'int', 'bool', 'string', 'fun'
+    type_name: Type
     mutable: bool
-    params: list[tuple[str, str]] | None = None  # только для функций
-    return_type: str | None = None  # только для функций
+
+    params: list[tuple[Type, str]] | None = None
+    return_type: Type | None = None
 
 
 class Scope:
@@ -65,7 +82,6 @@ class Scope:
         self.parent = parent
 
     def define(self, sym: Symbol) -> Symbol | None:
-        """Возвращает существующий символ, если имя уже занято в данной области."""
         existing = self._syms.get(sym.name)
         if existing is not None:
             return existing
@@ -73,46 +89,30 @@ class Scope:
         return None
 
     def resolve(self, name: str) -> Symbol | None:
-        """Ищет символ вверх по цепочке областей видимости."""
         sym = self._syms.get(name)
         if sym is not None:
             return sym
         return self.parent.resolve(name) if self.parent else None
 
 
-# ---------------------------------------------------------------------------
-# Errors
-# ---------------------------------------------------------------------------
-
-
-class SemanticError(Exception): ...
-
-
-# ---------------------------------------------------------------------------
-# Analyzer
-# ---------------------------------------------------------------------------
+class SemanticError(Exception):
+    pass
 
 
 class Analyzer:
     def __init__(
         self,
-        output_devices: set[str] | None = None,
         input_devices: set[str] | None = None,
     ) -> None:
-        self._errors: list[SemanticError] = []
         self._scope = Scope()
-        self._return_type: str | None = None
+        self._return_type: Type | None = None
         self._in_interrupt_handler = False
-        for label in output_devices or set():
-            self._scope.define(Symbol(label, "output_device", mutable=False))
+
         for label in input_devices or set():
-            self._scope.define(Symbol(label, "input_device", mutable=False))
+            self._scope.define(Symbol(label, Type.INPUT_DEVICE, mutable=False))
 
-    def analyze(self, program: Program) -> list[SemanticError]:
+    def analyze(self, program: Program) -> None:
         self._visit(program)
-        return self._errors
-
-    # --- scope helpers ---
 
     def _push(self) -> None:
         self._scope = Scope(self._scope)
@@ -123,58 +123,60 @@ class Analyzer:
     def _define(self, sym: Symbol) -> None:
         existing = self._scope.define(sym)
         if existing is not None:
-            self._err(f"'{sym.name}' already declared in this scope")
+            self.error(f"'{sym.name}' already declared in this scope")
 
     def _resolve(self, name: str) -> Symbol | None:
         sym = self._scope.resolve(name)
         if sym is None:
-            self._err(f"undefined name '{name}'")
+            self.error(f"undefined name '{name}'")
         return sym
 
-    def _err(self, message: str) -> Never:
+    def error(self, message: str) -> Never:
         raise SemanticError(message)
 
-    # --- visitor (returns inferred type or None if unknown) ---
-
-    def _visit(self, node: object) -> str | None:  # noqa: PLR0911, PLR0912
+    def _visit(self, node: ASTNode) -> Type | None:
         match node:
             case Program(body=body):
                 for stmt in body:
                     self._visit(stmt)
 
             case ConstDecl(name=name, type_name=t, value=value):
+                t_type = Type(t)
                 vtype = self._visit(value)
-                self._check_compat(t, vtype, f"const '{name}'")
-                self._define(Symbol(name, t, mutable=False))
+                self._check_compat(t_type, vtype, f"const '{name}'")
+                self._define(Symbol(name, t_type, mutable=False))
 
             case VarDecl(name=name, type_name=t, value=value):
+                t_type = Type(t)
                 vtype = self._visit(value)
-                self._check_compat(t, vtype, f"var '{name}'")
-                self._define(Symbol(name, t, mutable=True))
+                self._check_compat(t_type, vtype, f"var '{name}'")
+                self._define(Symbol(name, t_type, mutable=True))
 
-            case ArrayDecl(name=name, type_name=t, size=_):
-                self._define(Symbol(name, "array", mutable=True))
+            case ArrayDecl(name=name, type_name=_, size=_):
+                self._define(Symbol(name, Type.ARRAY, mutable=True))
 
             case IndexAssignStmt(name=name, index=index, value=value):
                 sym = self._resolve(name)
-                if sym is not None and sym.type_name != "array":
-                    self._err(f"'{name}' is not an array")
+                if sym is not None and sym.type_name != Type.ARRAY:
+                    self.error(f"'{name}' is not an array")
                 self._visit(index)
                 self._visit(value)
 
             case FunDecl(name=name, params=params, body=body, return_type=rt):
-                self._define(Symbol(name, "fun", mutable=False, params=params, return_type=rt))
+                rt_type = Type(rt) if rt else None
+                params_typed = [(Type(tn), pn) for tn, pn in params]
+                self._define(Symbol(name, Type.FUN, mutable=False, params=params_typed, return_type=rt_type))
                 self._push()
                 for type_name, param_name in params:
-                    self._define(Symbol(param_name, type_name, mutable=True))
+                    self._define(Symbol(param_name, Type(type_name), mutable=True))
                 prev = self._return_type
-                self._return_type = rt
+                self._return_type = rt_type
                 self._visit(body)
                 self._return_type = prev
                 self._pop()
 
             case InterruptDecl(vector=_, name=name, body=body):
-                self._define(Symbol(name, "interrupt", mutable=False))
+                self._define(Symbol(name, Type.INTERRUPT, mutable=False))
                 self._push()
                 prev = self._in_interrupt_handler
                 self._in_interrupt_handler = True
@@ -185,7 +187,7 @@ class Analyzer:
             case AssignStmt(name=name, value=value):
                 sym = self._resolve(name)
                 if sym is not None and not sym.mutable:
-                    self._err(f"cannot assign to const '{name}'")
+                    self.error(f"cannot assign to const '{name}'")
                 vtype = self._visit(value)
                 if sym is not None:
                     self._check_compat(sym.type_name, vtype, f"'{name}'")
@@ -202,7 +204,7 @@ class Analyzer:
                         self._visit(else_branch)
                         self._pop()
                     else:
-                        self._visit(else_branch)  # IfStmt управляет своими скоупами сам
+                        self._visit(else_branch)
 
             case WhileStmt(condition=cond, body=body):
                 self._visit(cond)
@@ -219,16 +221,14 @@ class Analyzer:
 
             case ReturnStmt(value=value):
                 if self._in_interrupt_handler:
-                    self._err("cannot return from an interrupt handler")
+                    self.error("cannot return from an interrupt handler")
                 vtype = self._visit(value) if value is not None else None
                 if self._return_type is None:
                     if vtype is not None:
-                        self._err("cannot return a value from a void function")
+                        self.error("cannot return a value from a void function")
                 else:
                     if value is not None:
                         self._check_compat(self._return_type, vtype, "return value")
-
-            # --- выражения ---
 
             case BinaryOp(op=op, left=left, right=right):
                 ltype = self._visit(left)
@@ -236,130 +236,129 @@ class Analyzer:
                 return self._infer_binary(op, ltype, rtype)
 
             case UnaryOp(op=op, operand=operand):
-                if op in _INCR_OPS:
+                if op in INCR_OPS:
                     if not isinstance(operand, Ident):
-                        self._err(f"'{op}' requires an identifier as operand")
-                        return None
+                        self.error(f"'{op}' requires an identifier as operand")
                     sym = self._resolve(operand.name)
                     if sym is not None:
                         if not sym.mutable:
-                            self._err(f"cannot apply '{op}' to const '{operand.name}'")
-                        if sym.type_name not in _NUMERIC:
-                            self._err(f"'{op}' requires a numeric variable, got '{sym.type_name}'")
+                            self.error(f"cannot apply '{op}' to const '{operand.name}'")
+                        if sym.type_name not in NUMERIC:
+                            self.error(f"'{op}' requires a numeric variable, got '{sym.type_name}'")
                     return sym.type_name if sym else None
                 otype = self._visit(operand)
-                if op == "NOT":
-                    if otype is not None and otype != "bool":
-                        self._err(f"'!' requires bool, got '{otype}'")
-                    return "bool"
+                if op == Op.NOT:
+                    if otype is not None and otype != Type.BOOL:
+                        self.error(f"'!' requires bool, got '{otype}'")
+                    return Type.BOOL
                 return otype
 
             case PostfixOp(op=op, operand=operand):
                 if not isinstance(operand, Ident):
-                    self._err(f"'{op}' requires an identifier as operand")
-                    return None
+                    self.error(f"'{op}' requires an identifier as operand")
                 sym = self._resolve(operand.name)
                 if sym is not None:
                     if not sym.mutable:
-                        self._err(f"cannot apply '{op}' to const '{operand.name}'")
-                    if sym.type_name not in _NUMERIC:
-                        self._err(f"'{op}' requires a numeric variable, got '{sym.type_name}'")
+                        self.error(f"cannot apply '{op}' to const '{operand.name}'")
+                    if sym.type_name not in NUMERIC:
+                        self.error(f"'{op}' requires a numeric variable, got '{sym.type_name}'")
                 return sym.type_name if sym else None
 
             case Call(name=name, args=args):
-                fun_sym: Symbol | None = None
-                visit_args = args
-                if name in _BUILTINS:
-                    if name in {"print", "println"} and args and isinstance(args[0], Ident):
-                        first_sym = self._scope.resolve(args[0].name)
-                        if first_sym is not None and first_sym.type_name == "output_device":
-                            visit_args = args[1:]
-                    elif name == "getchar":
+                spec = BUILTINS.get(name)
+                if spec is not None:
+                    if name == "print":
+                        for i, arg in enumerate(args):
+                            t = self._visit(arg)
+                            if t is not None and t not in PRINTABLE:
+                                self.error(f"argument {i + 1}: invalid type '{t}', expected one of {sorted(PRINTABLE)}")
+
+                    elif name == "read":
                         if len(args) == 0:
                             if not self._in_interrupt_handler:
-                                self._err("getchar() without a label can only be used in an interrupt handler")
-                            visit_args = []
+                                self.error("read() without a label can only be used in an interrupt handler")
                         elif len(args) == 1 and isinstance(args[0], Ident):
                             first_sym = self._scope.resolve(args[0].name)
-                            if first_sym is None or first_sym.type_name != "input_device":
-                                self._err(f"'{args[0].name}' is not an input device label")
-                            visit_args = []
+                            if first_sym is None or first_sym.type_name != Type.INPUT_DEVICE:
+                                self.error(f"'{args[0].name}' is not an input device label")
                         else:
-                            self._err("getchar expects 0 or 1 device-label arg")
-                            visit_args = []
-                    expected = _BUILTINS[name]
-                    if expected is not None and len(args) != expected:
-                        self._err(f"'{name}' expects {expected} arg(s), got {len(args)}")
+                            self.error("read expects 0 or 1 device-label arg")
+
+                    elif spec.params is not None:
+                        if len(args) != len(spec.params):
+                            self.error(f"'{name}' expects {len(spec.params)} arg(s), got {len(args)}")
+                        for i, (arg, expected_type) in enumerate(zip(args, spec.params, strict=True)):
+                            t = self._visit(arg)
+                            if t is not None and t != expected_type:
+                                self.error(f"'{name}' argument {i + 1}: expected '{expected_type}', got '{t}'")
+
+                    return spec.return_type
+
                 else:
-                    fun_sym = self._resolve(name)
+                    fun_sym: Symbol | None = self._resolve(name)
                     if fun_sym is not None:
-                        if fun_sym.type_name == "interrupt":
-                            self._err(f"interrupt handler '{name}' cannot be called directly")
-                        elif fun_sym.type_name != "fun":
-                            self._err(f"'{name}' is not a function")
+                        if fun_sym.type_name == Type.INTERRUPT:
+                            self.error(f"interrupt handler '{name}' cannot be called directly")
+                        elif fun_sym.type_name != Type.FUN:
+                            self.error(f"'{name}' is not a function")
                         elif fun_sym.params is not None and len(args) != len(fun_sym.params):
-                            self._err(f"'{name}' expects {len(fun_sym.params)} arg(s), got {len(args)}")
-                for arg in visit_args:
-                    self._visit(arg)
-                return fun_sym.return_type if fun_sym else None
+                            self.error(f"'{name}' expects {len(fun_sym.params)} arg(s), got {len(args)}")
+                    for arg in args:
+                        self._visit(arg)
+                    return fun_sym.return_type if fun_sym else None
 
             case IndexExpr(name=name, index=index):
                 sym = self._resolve(name)
-                if sym is not None and sym.type_name != "array":
-                    self._err(f"'{name}' is not an array")
+                if sym is not None and sym.type_name != Type.ARRAY:
+                    self.error(f"'{name}' is not an array")
                 self._visit(index)
-                return "int"
+                return Type.INT
 
             case Ident(name=name):
                 sym = self._resolve(name)
-                if sym is not None and sym.type_name == "output_device":
-                    self._err(f"output device label '{name}' can only appear as first arg of print/println")
-                if sym is not None and sym.type_name == "input_device":
-                    self._err(f"input device label '{name}' can only appear as arg of getchar")
-                if sym is not None and sym.type_name == "array":
-                    self._err(f"array '{name}' must be indexed with []")
-                return sym.type_name if sym else None
+                if sym is not None:
+                    match sym.type_name:
+                        case Type.INPUT_DEVICE:
+                            self.error(f"input device label '{name}' can only appear as arg of read")
+                        case Type.ARRAY:
+                            self.error(f"array '{name}' must be indexed with []")
+                        case _:
+                            return sym.type_name
+                return None
 
             case Number():
-                return "int"
+                return Type.INT
 
             case String():
-                return "string"
+                return Type.STRING
 
             case Bool():
-                return "bool"
+                return Type.BOOL
 
         return None
 
-    # --- type helpers ---
-
-    def _check_compat(self, declared: str, actual: str | None, label: str) -> None:
+    def _check_compat(self, declared: Type, actual: Type | None, label: str) -> None:
         if actual is None or declared == actual:
             return
-        # byte ↔ int считается совместимым (числовое расширение)
-        if declared in _NUMERIC and actual in _NUMERIC:
-            return
-        self._err(f"type mismatch for {label}: expected '{declared}', got '{actual}'")
+        self.error(f"type mismatch for {label}: expected '{declared}', got '{actual}'")
 
-    def _infer_binary(self, op: str, ltype: str | None, rtype: str | None) -> str | None:
-        if op in _ARITH_OPS:
+    def _infer_binary(self, op: str, ltype: Type | None, rtype: Type | None) -> Type | None:
+        if op in ARITH_OPS:
             for t, side in ((ltype, "left"), (rtype, "right")):
-                if t is not None and t not in _NUMERIC:
-                    self._err(f"'{op}' requires numeric operands, got '{t}' on {side}")
-            if ltype in _NUMERIC or rtype in _NUMERIC:
-                return "int"
+                if t is not None and t not in NUMERIC:
+                    self.error(f"'{op}' requires numeric operands, got '{t}' on {side}")
             return ltype or rtype
 
-        if op in _CMP_OPS:
+        if op in CMP_OPS:
             if ltype is not None and rtype is not None and ltype != rtype:
-                if not (ltype in _NUMERIC and rtype in _NUMERIC):
-                    self._err(f"'{op}' cannot compare '{ltype}' with '{rtype}'")
-            return "bool"
+                if not (ltype in NUMERIC and rtype in NUMERIC):
+                    self.error(f"'{op}' cannot compare '{ltype}' with '{rtype}'")
+            return Type.BOOL
 
-        if op in _LOGIC_OPS:
+        if op in LOGIC_OPS:
             for t, side in ((ltype, "left"), (rtype, "right")):
-                if t is not None and t != "bool":
-                    self._err(f"'{op}' requires bool operands, got '{t}' on {side}")
-            return "bool"
+                if t is not None and t != Type.BOOL:
+                    self.error(f"'{op}' requires bool operands, got '{t}' on {side}")
+            return Type.BOOL
 
         return None

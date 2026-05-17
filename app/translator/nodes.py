@@ -4,6 +4,26 @@ import dataclasses as _dc
 import sys
 from abc import ABC
 from dataclasses import dataclass
+from enum import StrEnum
+
+
+class Op(StrEnum):
+    PLUS = "PLUS"
+    MINUS = "MINUS"
+    STAR = "STAR"
+    SLASH = "SLASH"
+    EQUAL = "EQUAL"
+    NOT_EQUAL = "NOT_EQUAL"
+    LESS_THAN = "LESS_THAN"
+    GREATER_THAN = "GREATER_THAN"
+    LESS_THAN_OR_EQUAL = "LESS_THAN_OR_EQUAL"
+    GREATER_THAN_OR_EQUAL = "GREATER_THAN_OR_EQUAL"
+    AND = "AND"
+    OR = "OR"
+    XOR = "XOR"
+    NOT = "NOT"
+    INCREMENT = "INCREMENT"
+    DECREMENT = "DECREMENT"
 
 
 @dataclass
@@ -94,20 +114,20 @@ class IndexAssignStmt(ASTNode):
 
 @dataclass
 class BinaryOp(ASTNode):
-    op: str
+    op: Op
     left: Expr
     right: Expr
 
 
 @dataclass
 class UnaryOp(ASTNode):
-    op: str
+    op: Op
     operand: Expr
 
 
 @dataclass
 class PostfixOp(ASTNode):
-    op: str
+    op: Op
     operand: Expr
 
 

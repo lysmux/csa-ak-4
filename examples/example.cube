@@ -1,4 +1,4 @@
-const a: byte = 1;
+var a: int = 1;
 var b: int = 2;
 
 b = a + b;
@@ -13,9 +13,9 @@ a--;
 
 if (a > b) {
     print("123");
-    println("abc")
-} else if () {
-} else {}
+    print("abc");
+} else {
+}
 
 while (!(a+b)) {}
 

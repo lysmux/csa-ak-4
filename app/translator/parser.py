@@ -16,6 +16,7 @@ from app.translator.nodes import (
     IndexExpr,
     InterruptDecl,
     Number,
+    Op,
     PostfixOp,
     Program,
     ReturnStmt,
@@ -86,9 +87,7 @@ class Parser:
             msg = f"Expected {expected.name}, got EOF"
             raise ParseError(msg)
         if tok.type != expected:
-            msg = (
-                f"Expected {expected.name}, got {tok.type.name!r} {tok.value!r} at line {tok.line}, column {tok.column}"
-            )
+            msg = f"Expected {expected.name!r}, got {tok.type.name!r} {tok.value!r} at line {tok.line}, column {tok.column}"
             raise ParseError(msg)
 
         return self.advance()
@@ -266,7 +265,7 @@ class Parser:
                 operand = Ident(self.eat(TokenType.IDENT).value)
             else:
                 operand = self.parse_expr(PREFIX_BP)
-            left: Expr = UnaryOp(op=op.type.name, operand=operand)
+            left = UnaryOp(op=Op[op.type.name], operand=operand)
         elif tok.type == TokenType.NUMBER:
             left = Number(int(self.advance().value))
         elif tok.type == TokenType.STRING:
@@ -307,7 +306,7 @@ class Parser:
             post_bp = POSTFIX_BP.get(op_tok.type)
             if post_bp is not None and post_bp > min_bp:
                 self.advance()
-                left = PostfixOp(op=op_tok.type.name, operand=left)
+                left = PostfixOp(op=Op[op_tok.type.name], operand=left)
                 continue
 
             infix_bp = INFIX_BP.get(op_tok.type)
@@ -316,7 +315,7 @@ class Parser:
 
             self.advance()
             right = self.parse_expr(infix_bp)
-            left = BinaryOp(op=op_tok.type.name, left=left, right=right)
+            left = BinaryOp(op=Op[op_tok.type.name], left=left, right=right)
 
         return left
 

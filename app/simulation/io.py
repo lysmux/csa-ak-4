@@ -1,57 +1,45 @@
-from typing import Protocol
+from typing import Literal
 
 
-class Device(Protocol):
-    def read(self) -> int: ...
-    def write(self, value: int) -> None: ...
-    def tick(self, current_tick: int) -> int | None: ...
+class Device:
+    def read(self) -> int:
+        raise NotImplementedError(f"{type(self).__name__} does not support read")
 
-
-class CharOutput(Device):
-    def __init__(self) -> None:
-        self.buffer: list[int] = []
-
-    @property
-    def string(self) -> str:
-        result = ""
-        for char in self.buffer:
-            result += chr(char)
-        return result
-
-    def read(self) -> int: ...
     def write(self, value: int) -> None:
-        self.buffer.append(value)
+        raise NotImplementedError(f"{type(self).__name__} does not support write")
 
     def tick(self, current_tick: int) -> int | None:
         return None
 
+    def as_string(self) -> str:
+        return ""
 
-class IntOutput(Device):
-    def __init__(self) -> None:
+
+class Output(Device):
+    def __init__(self, format: Literal["string", "raw"]) -> None:
+        self.format = format
         self.buffer: list[int] = []
 
-    @property
-    def string(self) -> str:
+    def write(self, value: int) -> None:
+        self.buffer.append(value)
+
+    def as_string(self) -> str:
+        if self.format == "string":
+            return "".join(map(chr, self.buffer))
         return " ".join(str(v) for v in self.buffer)
 
-    def read(self) -> int: ...
-    def write(self, value: int) -> None:
-        self.buffer.append(value)
 
-    def tick(self, current_tick: int) -> int | None:
-        return None
-
-
-class CharInput(Device):
-    def __init__(self, schedule: list[tuple[int, str]], vector: int) -> None:
-        self._schedule: list[tuple[int, str]] = sorted(schedule, key=lambda p: p[0])
+class Input(Device):
+    def __init__(self, schedule: list[tuple[int, int | str]], vector: int) -> None:
+        normalized = [(t, ord(v) if isinstance(v, str) else v) for t, v in schedule]
+        self._schedule: list[tuple[int, int]] = sorted(normalized, key=lambda p: p[0])
         self._vector = vector
         self._port: int | None = None
 
     def tick(self, current_tick: int) -> int | None:
         while self._schedule and self._schedule[0][0] <= current_tick:
-            _, ch = self._schedule.pop(0)
-            self._port = ord(ch)
+            _, value = self._schedule.pop(0)
+            self._port = value
         return self._vector if self._port is not None else None
 
     def read(self) -> int:
@@ -59,5 +47,3 @@ class CharInput(Device):
             return 0
         value, self._port = self._port, None
         return value
-
-    def write(self, value: int) -> None: ...

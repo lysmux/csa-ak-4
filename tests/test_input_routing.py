@@ -1,37 +1,33 @@
 import pytest
+from app.config import InputDeviceConfig
 from app.simulation.control_unit import ControlUnit
 from app.simulation.data_path import DataPath
-from app.simulation.io import CharInput, CharOutput, Device
+from app.simulation.io import Device, Input, Output
 from app.simulation.memory import Memory
 from app.simulation.stack import Stack
 from app.translator.analyzer import Analyzer, SemanticError
-from app.translator.codegen import CodeGen, CodeGenError, InputDevice, OutputDevice
+from app.translator.codegen import CodeGen, CodeGenError
 from app.translator.lexer import Lexer
 from app.translator.parser import Parser
 
-CHAR_OUT_ADDR = 0x222
+OUT_ADDR = 0x222
 KEYBOARD_ADDR = 0x223
 DEBUG_IN_ADDR = 0x225
 
-OUTPUTS: dict[str, OutputDevice] = {
-    "default": OutputDevice(address=CHAR_OUT_ADDR, kind="char"),
-}
-
-INPUTS: dict[str, InputDevice] = {
-    "keyboard":    InputDevice(address=KEYBOARD_ADDR, vector=0),
-    "debug_input": InputDevice(address=DEBUG_IN_ADDR, vector=1),
+INPUTS: dict[str, InputDeviceConfig] = {
+    "keyboard": InputDeviceConfig(address=KEYBOARD_ADDR, vector=0),
+    "debug_input": InputDeviceConfig(address=DEBUG_IN_ADDR, vector=1),
 }
 
 
 def _compile(
         src: str,
-        outputs: dict[str, OutputDevice] = OUTPUTS,
-        inputs: dict[str, InputDevice] = INPUTS,
+        inputs: dict[str, InputDeviceConfig] = INPUTS,
 ):
     tokens = Lexer(src).tokenize()
     ast = Parser(tokens).parse()
-    Analyzer(output_devices=set(outputs), input_devices=set(inputs)).analyze(ast)
-    return CodeGen(output_devices=outputs, input_devices=inputs).generate(ast)
+    Analyzer(input_devices=set(inputs)).analyze(ast)
+    return CodeGen(output_address=OUT_ADDR, input_devices=inputs).generate(ast)
 
 
 def _run(src: str, schedules: dict[int, list[tuple[int, str]]] | None = None,
@@ -44,11 +40,11 @@ def _run(src: str, schedules: dict[int, list[tuple[int, str]]] | None = None,
     return_stack = Stack(2000)
     data_stack = Stack(2000)
 
-    char_dev = CharOutput()
-    keyboard = CharInput(schedule=(schedules or {}).get(KEYBOARD_ADDR, []), vector=0)
-    debug_input = CharInput(schedule=(schedules or {}).get(DEBUG_IN_ADDR, []), vector=1)
+    output = Output(format="string")
+    keyboard = Input(schedule=(schedules or {}).get(KEYBOARD_ADDR, []), vector=0)
+    debug_input = Input(schedule=(schedules or {}).get(DEBUG_IN_ADDR, []), vector=1)
     io_map: dict[int, Device] = {
-        CHAR_OUT_ADDR: char_dev,
+        OUT_ADDR: output,
         KEYBOARD_ADDR: keyboard,
         DEBUG_IN_ADDR: debug_input,
     }
@@ -60,18 +56,18 @@ def _run(src: str, schedules: dict[int, list[tuple[int, str]]] | None = None,
         vector_table=dict(program.interrupt_handlers),
     )
     cu.run(limit=limit)
-    return char_dev.string
+    return output.as_string()
 
 
 # ---------------------------------------------------------------------------
 # Codegen: address resolution
 # ---------------------------------------------------------------------------
 
-def test_getchar_in_handler_uses_vector_device():
-    """getchar() inside interrupt 0 reads from device with vector=0 (keyboard)."""
+def test_read_in_handler_uses_vector_device():
+    """read() inside interrupt 0 reads from device with vector=0 (keyboard)."""
     out = _run(
         """
-        interrupt 0 on_input() { print(getchar()); }
+        interrupt 0 on_input() { print(read()); }
         fun main() { enable_interrupts(); while (true) {} }
         """,
         schedules={KEYBOARD_ADDR: [(10, "x"), (50, "y")]},
@@ -81,11 +77,11 @@ def test_getchar_in_handler_uses_vector_device():
     assert "y" in out
 
 
-def test_getchar_with_explicit_label():
-    """getchar(debug_input) inside interrupt 0 reads from debug_input (vector 1)."""
+def test_read_with_explicit_label():
+    """read(debug_input) inside interrupt 0 reads from debug_input (vector 1)."""
     out = _run(
         """
-        interrupt 0 on_input() { print(getchar(debug_input)); }
+        interrupt 0 on_input() { print(read(debug_input)); }
         fun main() { enable_interrupts(); while (true) {} }
         """,
         schedules={
@@ -102,26 +98,16 @@ def test_getchar_with_explicit_label():
 # Analyzer errors
 # ---------------------------------------------------------------------------
 
-def test_getchar_without_label_outside_handler_raises():
-    with pytest.raises(SemanticError, match="getchar"):
-        _compile("fun main() { var c: int = getchar(); }")
+def test_read_without_label_outside_handler_raises():
+    with pytest.raises(SemanticError, match="read"):
+        _compile("fun main() { var c: int = read(); }")
 
 
-def test_getchar_with_unknown_label_raises():
+def test_read_with_unknown_label_raises():
     with pytest.raises(SemanticError, match="not an input device"):
         _compile(
             """
-            interrupt 0 on_input() { print(getchar(no_such_input)); }
-            fun main() { while (true) {} }
-            """,
-        )
-
-
-def test_getchar_with_output_label_raises():
-    with pytest.raises(SemanticError, match="not an input device"):
-        _compile(
-            """
-            interrupt 0 on_input() { print(getchar(default)); }
+            interrupt 0 on_input() { print(read(no_such_input)); }
             fun main() { while (true) {} }
             """,
         )
@@ -136,29 +122,29 @@ def test_input_label_as_value_raises():
 # Codegen errors
 # ---------------------------------------------------------------------------
 
-def test_getchar_in_handler_with_no_matching_input_raises():
+def test_read_in_handler_with_no_matching_input_raises():
     """Interrupt vector 7 has no input device → CodeGenError."""
     with pytest.raises(CodeGenError, match="no input device configured for interrupt vector 7"):
         _compile(
             """
-            interrupt 7 on_x() { print(getchar()); }
+            interrupt 7 on_x() { print(read()); }
             fun main() { while (true) {} }
             """,
         )
 
 
 def test_codegen_with_no_input_devices_outside_handler():
-    """No input devices configured, getchar() inside handler still wants one."""
+    """No input devices configured, read() inside handler still wants one."""
     with pytest.raises(CodeGenError, match="no input device"):
         tokens = Lexer(
             """
-            interrupt 0 h() { print(getchar()); }
+            interrupt 0 h() { print(read()); }
             fun main() { while (true) {} }
             """
         ).tokenize()
         ast = Parser(tokens).parse()
-        Analyzer(output_devices={"default"}).analyze(ast)
+        Analyzer().analyze(ast)
         CodeGen(
-            output_devices={"default": OutputDevice(address=CHAR_OUT_ADDR, kind="char")},
+            output_address=OUT_ADDR,
             input_devices={},
         ).generate(ast)

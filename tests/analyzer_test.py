@@ -4,35 +4,35 @@ from app.translator.lexer import Lexer
 from app.translator.parser import Parser
 
 
-def analyze(source: str) -> list[SemanticError]:
-    tokens = Lexer().tokenize(source)
+def analyze(source: str) -> None:
+    tokens = Lexer(source).tokenize()
     ast = Parser(tokens).parse()
-    return Analyzer().analyze(ast)
+    Analyzer().analyze(ast)
 
 
-def errors(source: str) -> list[str]:
-    return [e.message for e in analyze(source)]
+def error(source: str) -> str | None:
+    try:
+        analyze(source)
+        return None
+    except SemanticError as e:
+        return str(e)
 
 
 def ok(source: str) -> None:
-    errs = errors(source)
-    assert errs == [], f"unexpected errors: {errs}"
+    err = error(source)
+    assert err is None, f"unexpected error: {err}"
 
 
 def has_error(source: str, fragment: str) -> None:
-    errs = errors(source)
-    assert any(fragment in e for e in errs), (
-        f"expected error containing {fragment!r}, got: {errs}"
-    )
-
-
-def error_count(source: str) -> int:
-    return len(errors(source))
+    err = error(source)
+    assert err is not None, "no errors detected"
+    assert fragment in err, f"expected error containing {fragment!r}, got: {err}"
 
 
 # ---------------------------------------------------------------------------
 # Declarations — valid
 # ---------------------------------------------------------------------------
+
 
 def test_const_decl_ok():
     ok("const x: int = 1;")
@@ -50,13 +50,10 @@ def test_var_string():
     ok('var msg: string = "hi";')
 
 
-def test_byte_int_compat_decl():
-    ok("const a: byte = 1; var b: int = a;")
-
-
 # ---------------------------------------------------------------------------
 # Declarations — errors
 # ---------------------------------------------------------------------------
+
 
 def test_duplicate_const():
     has_error("const x: int = 1; const x: int = 2;", "already declared")
@@ -82,6 +79,7 @@ def test_type_mismatch_string_to_bool():
 # Assignment
 # ---------------------------------------------------------------------------
 
+
 def test_assign_ok():
     ok("var x: int = 0; x = 1;")
 
@@ -98,13 +96,10 @@ def test_assign_type_mismatch():
     has_error('var x: int = 0; x = "str";', "type mismatch")
 
 
-def test_assign_numeric_compat():
-    ok("const a: byte = 1; var b: int = 0; b = a;")
-
-
 # ---------------------------------------------------------------------------
 # Scope — shadowing and nesting
 # ---------------------------------------------------------------------------
+
 
 def test_duplicate_in_same_scope():
     has_error("var x: int = 1; var x: bool = true;", "already declared")
@@ -126,6 +121,7 @@ def test_outer_variable_visible_inside():
 # Undefined names
 # ---------------------------------------------------------------------------
 
+
 def test_use_before_decl():
     has_error("var x: int = y;", "undefined name 'y'")
 
@@ -142,12 +138,9 @@ def test_undefined_ident_in_assign():
 # Binary operators — type checks
 # ---------------------------------------------------------------------------
 
+
 def test_arithmetic_ok():
     ok("const a: int = 1; const b: int = 2; var c: int = a + b;")
-
-
-def test_arithmetic_byte_int():
-    ok("const a: byte = 1; const b: int = 2; var c: int = a + b;")
 
 
 def test_arithmetic_on_bool():
@@ -160,10 +153,6 @@ def test_arithmetic_on_string():
 
 def test_comparison_ok():
     ok("const a: int = 1; const b: int = 2; var c: bool = a < b;")
-
-
-def test_comparison_mixed_numeric():
-    ok("const a: byte = 1; const b: int = 2; var c: bool = a < b;")
 
 
 def test_comparison_type_mismatch():
@@ -181,6 +170,7 @@ def test_logical_on_int():
 # ---------------------------------------------------------------------------
 # Unary / postfix operators
 # ---------------------------------------------------------------------------
+
 
 def test_not_ok():
     ok("const a: bool = true; var b: bool = !a;")
@@ -218,6 +208,7 @@ def test_incr_on_string():
 # Function declarations
 # ---------------------------------------------------------------------------
 
+
 def test_fun_no_params_ok():
     ok("fun f() {}")
 
@@ -246,6 +237,7 @@ def test_fun_params_mutable():
 # Function calls
 # ---------------------------------------------------------------------------
 
+
 def test_call_ok():
     ok("fun f(int a) {} f(1);")
 
@@ -266,13 +258,55 @@ def test_builtin_print():
     ok('print("hello");')
 
 
-def test_builtin_println():
-    ok('println("world");')
+def test_print_string_ok():
+    ok('print("hello");')
+
+
+def test_print_int_ok():
+    ok("var x: int = 42; print(x);")
+
+
+def test_print_bool_ok():
+    ok("var b: bool = true; print(b);")
+
+
+def test_print_invalid_type_fun():
+    has_error("fun f() {} print(f);", "invalid type 'fun'")
+
+
+def test_print_invalid_type_array():
+    has_error("var arr: int[3]; print(arr);", "must be indexed with")
+
+
+def test_addc_ok():
+    ok("var a: int = 1; var b: int = 2; var c: int = addc(a, b);")
+
+
+def test_addc_wrong_arity():
+    has_error("var c: int = addc(1);", "expects 2 arg(s)")
+
+
+def test_addc_non_numeric():
+    has_error(
+        "var a: bool = true; var b: int = 0; var c: int = addc(a, b);",
+        "expected 'int', got 'bool'",
+    )
+
+
+def test_read_returns_int():
+    ok("""
+    interrupt 0 h() {
+        var c: int = read();
+        print(c);
+    }
+    fun main() {}
+    """)
 
 
 # ---------------------------------------------------------------------------
 # Control flow
 # ---------------------------------------------------------------------------
+
 
 def test_if_ok():
     ok("var x: int = 0; if (true) { x = 1; }")
@@ -295,25 +329,9 @@ def test_if_else_if_ok():
 
 
 # ---------------------------------------------------------------------------
-# Multiple errors collected — analyzer does not stop at first error
-# ---------------------------------------------------------------------------
-
-def test_multiple_undefined():
-    assert error_count("x = 1; y = 2;") == 2
-
-
-def test_multiple_type_errors():
-    assert error_count('const a: int = "x"; const b: bool = 1;') == 2
-
-
-def test_errors_in_nested_scopes_collected():
-    src = "if (true) { x = 1; } y = 2;"
-    assert error_count(src) == 2
-
-
-# ---------------------------------------------------------------------------
 # Scope — while body
 # ---------------------------------------------------------------------------
+
 
 def test_while_body_scope():
     has_error("while (true) { var x: int = 0; } var y: int = x;", "undefined name 'x'")
@@ -330,6 +348,7 @@ def test_while_body_mutable_check():
 # ---------------------------------------------------------------------------
 # Scope — else/else-if isolation
 # ---------------------------------------------------------------------------
+
 
 def test_else_scope_isolated():
     has_error("if (true) {} else { var x: int = 1; } var y: int = x;", "undefined name 'x'")
@@ -351,6 +370,7 @@ def test_deeply_nested_scope():
 # ---------------------------------------------------------------------------
 # Binary operators — parametrized
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.parametrize("op", ["+", "-", "*", "/"])
 def test_arithmetic_all_ops_ok(op):
@@ -381,6 +401,7 @@ def test_logic_all_ops_on_int_err(op):
 # Type inference chains
 # ---------------------------------------------------------------------------
 
+
 def test_arithmetic_result_used_in_comparison():
     ok("const a: int = 1; const b: int = 2; var c: bool = a + b > 0;")
 
@@ -405,6 +426,7 @@ def test_bool_declaration_from_arithmetic():
 # Increment/decrement — all combinations
 # ---------------------------------------------------------------------------
 
+
 def test_prefix_decr_ok():
     ok("var x: int = 0; --x;")
 
@@ -425,13 +447,10 @@ def test_postfix_incr_on_bool():
     has_error("var x: bool = true; x++;", "requires a numeric variable")
 
 
-def test_decrement_byte():
-    ok("var x: byte = 1; --x;")
-
-
 # ---------------------------------------------------------------------------
 # Function declarations — advanced
 # ---------------------------------------------------------------------------
+
 
 def test_fun_body_valid_stmts():
     ok("fun f(int a, int b) { var c: int = a + b; c = a; }")
@@ -474,6 +493,7 @@ def test_fun_body_undefined():
 # Call expressions
 # ---------------------------------------------------------------------------
 
+
 def test_call_result_in_expr():
     ok("fun f(int a) {} var x: int = 0; x = x + 0;")
 
@@ -485,6 +505,7 @@ def test_call_as_arg():
 # ---------------------------------------------------------------------------
 # Literal type inference
 # ---------------------------------------------------------------------------
+
 
 def test_number_infers_int():
     ok("const x: int = 42;")
@@ -500,22 +521,3 @@ def test_bool_false_infers_bool():
 
 def test_string_infers_string():
     ok('const x: string = "hello";')
-
-
-def test_number_not_byte():
-    # byte ↔ int совместимы — числовое расширение
-    ok("const x: byte = 42;")
-
-
-# ---------------------------------------------------------------------------
-# Full example
-# ---------------------------------------------------------------------------
-
-def test_example_errors():
-    src = open("examples/example.cube").read()
-    errs = errors(src)
-    # const a++ и a-- невалидны, !(a+b) применяет ! к int
-    messages = "\n".join(errs)
-    assert "cannot apply 'INCREMENT' to const 'a'" in messages
-    assert "cannot apply 'DECREMENT' to const 'a'" in messages
-    assert "'!' requires bool" in messages

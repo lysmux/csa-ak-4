@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from app.config import InputDeviceConfig
 from app.isa.instruction import Instruction
 from app.isa.opcode import Opcode
 from app.translator.nodes import (
@@ -20,6 +21,7 @@ from app.translator.nodes import (
     IndexExpr,
     InterruptDecl,
     Number,
+    Op,
     PostfixOp,
     Program,
     ReturnStmt,
@@ -29,39 +31,27 @@ from app.translator.nodes import (
     WhileStmt,
 )
 
-_BUILTINS = frozenset({"print", "println", "getchar", "enable_interrupts", "disable_interrupts"})
+_BUILTINS = frozenset({"print", "read", "enable_interrupts", "disable_interrupts"})
 
-# Comparison op name → conditional jump opcode for the TRUE branch
-_CMP_JUMP: dict[str, Opcode] = {
-    "EQUAL": Opcode.JZ,
-    "NOT_EQUAL": Opcode.JNZ,
-    "LESS_THAN": Opcode.JL,
-    "GREATER_THAN": Opcode.JG,
-    "LESS_THAN_OR_EQUAL": Opcode.JLE,
-    "GREATER_THAN_OR_EQUAL": Opcode.JGE,
+# Comparison op → conditional jump opcode for the TRUE branch
+_CMP_JUMP: dict[Op, Opcode] = {
+    Op.EQUAL: Opcode.JZ,
+    Op.NOT_EQUAL: Opcode.JNZ,
+    Op.LESS_THAN: Opcode.JL,
+    Op.GREATER_THAN: Opcode.JG,
+    Op.LESS_THAN_OR_EQUAL: Opcode.JLE,
+    Op.GREATER_THAN_OR_EQUAL: Opcode.JGE,
 }
 
-_ARITH_OP: dict[str, Opcode] = {
-    "PLUS": Opcode.ADD,
-    "MINUS": Opcode.SUB,
-    "STAR": Opcode.MUL,
-    "SLASH": Opcode.DIV,
-    "AND": Opcode.AND,
-    "OR": Opcode.OR,
-    "XOR": Opcode.XOR,
+_ARITH_OP: dict[Op, Opcode] = {
+    Op.PLUS: Opcode.ADD,
+    Op.MINUS: Opcode.SUB,
+    Op.STAR: Opcode.MUL,
+    Op.SLASH: Opcode.DIV,
+    Op.AND: Opcode.AND,
+    Op.OR: Opcode.OR,
+    Op.XOR: Opcode.XOR,
 }
-
-
-@dataclass(frozen=True)
-class OutputDevice:
-    address: int
-    kind: str  # "char" | "int"
-
-
-@dataclass(frozen=True)
-class InputDevice:
-    address: int
-    vector: int
 
 
 @dataclass
@@ -78,12 +68,12 @@ class CodeGenError(Exception):
 class CodeGen:
     def __init__(
         self,
-        output_devices: dict[str, OutputDevice] | None = None,
-        input_devices: dict[str, InputDevice] | None = None,
+        output_address: int,
+        input_devices: dict[str, InputDeviceConfig] | None = None,
     ) -> None:
-        self._output_devices = output_devices or {}
+        self._output_address = output_address
         self._input_devices = input_devices or {}
-        self._inputs_by_vector: dict[int, InputDevice] = {}
+        self._inputs_by_vector: dict[int, InputDeviceConfig] = {}
         for dev in self._input_devices.values():
             existing = self._inputs_by_vector.get(dev.vector)
             if existing is None:
@@ -110,16 +100,24 @@ class CodeGen:
 
     # --- public API --------------------------------------------------------
 
-    def generate(self, program: Program) -> CompiledProgram:
-        entry_idx = len(self._instrs)
-        self._emit(Opcode.CALL, 0)  # patched to main's address
-        self._emit(Opcode.HALT)
+    def generate(
+        self,
+        program: Program,
+        require_entry_point: bool = True,
+    ) -> CompiledProgram:
+        if require_entry_point:
+            entry_idx = len(self._instrs)
+            self._emit(Opcode.CALL, 0)  # patched to main's address
+            self._emit(Opcode.HALT)
         self._gen(program)
-        main_label = self._fun_labels.get("main")
-        if main_label is None:
-            msg = "missing entry point: function 'main' is required"
-            raise CodeGenError(msg)
-        self._patches.append((entry_idx, main_label))
+        if require_entry_point:
+            main_label = self._fun_labels.get("main")
+            if main_label is None:
+                msg = "missing entry point: function 'main' is required"
+                raise CodeGenError(msg)
+            self._patches.append((entry_idx, main_label))
+        else:
+            self._emit(Opcode.HALT)
         self._backpatch()
         handlers_resolved = {v: self._labels[lbl] for v, lbl in self._interrupt_handlers.items()}
         return CompiledProgram(
@@ -215,35 +213,35 @@ class CodeGen:
                 if lv is None or rv is None:
                     return None
                 match op:
-                    case "PLUS":
+                    case Op.PLUS:
                         return lv + rv
-                    case "MINUS":
+                    case Op.MINUS:
                         return lv - rv
-                    case "STAR":
+                    case Op.STAR:
                         return lv * rv
-                    case "SLASH":
+                    case Op.SLASH:
                         return lv // rv if rv != 0 else None
-                    case "AND":
+                    case Op.AND:
                         return lv & rv
-                    case "OR":
+                    case Op.OR:
                         return lv | rv
-                    case "XOR":
+                    case Op.XOR:
                         return lv ^ rv
-                    case "EQUAL":
+                    case Op.EQUAL:
                         return int(lv == rv)
-                    case "NOT_EQUAL":
+                    case Op.NOT_EQUAL:
                         return int(lv != rv)
-                    case "LESS_THAN":
+                    case Op.LESS_THAN:
                         return int(lv < rv)
-                    case "GREATER_THAN":
+                    case Op.GREATER_THAN:
                         return int(lv > rv)
-                    case "LESS_THAN_OR_EQUAL":
+                    case Op.LESS_THAN_OR_EQUAL:
                         return int(lv <= rv)
-                    case "GREATER_THAN_OR_EQUAL":
+                    case Op.GREATER_THAN_OR_EQUAL:
                         return int(lv >= rv)
                     case _:
                         return None
-            case UnaryOp(op="NOT", operand=e):
+            case UnaryOp(op=Op.NOT, operand=e):
                 v = self._static_eval(e)
                 return None if v is None else int(v == 0)
             case _:
@@ -441,7 +439,7 @@ class CodeGen:
             # ----------------------------------------------------------------
             # Expressions — unary
             # ----------------------------------------------------------------
-            case UnaryOp(op="NOT", operand=operand):
+            case UnaryOp(op=Op.NOT, operand=operand):
                 lbl_true = self._fresh_label()
                 lbl_end = self._fresh_label()
                 self._gen(operand)
@@ -453,28 +451,28 @@ class CodeGen:
                 self._emit(Opcode.PUSH, 1)
                 self._mark_label(lbl_end)
 
-            case UnaryOp(op="INCREMENT", operand=Ident(name=name)):
+            case UnaryOp(op=Op.INCREMENT, operand=Ident(name=name)):
                 addr = self._var_addr(name)
                 self._emit(Opcode.LOAD, addr)
                 self._emit(Opcode.INC)
                 self._emit(Opcode.DUP)
                 self._emit(Opcode.STORE, addr)
 
-            case UnaryOp(op="DECREMENT", operand=Ident(name=name)):
+            case UnaryOp(op=Op.DECREMENT, operand=Ident(name=name)):
                 addr = self._var_addr(name)
                 self._emit(Opcode.LOAD, addr)
                 self._emit(Opcode.DEC)
                 self._emit(Opcode.DUP)
                 self._emit(Opcode.STORE, addr)
 
-            case PostfixOp(op="INCREMENT", operand=Ident(name=name)):
+            case PostfixOp(op=Op.INCREMENT, operand=Ident(name=name)):
                 addr = self._var_addr(name)
                 self._emit(Opcode.LOAD, addr)
                 self._emit(Opcode.DUP)
                 self._emit(Opcode.INC)
                 self._emit(Opcode.STORE, addr)
 
-            case PostfixOp(op="DECREMENT", operand=Ident(name=name)):
+            case PostfixOp(op=Op.DECREMENT, operand=Ident(name=name)):
                 addr = self._var_addr(name)
                 self._emit(Opcode.LOAD, addr)
                 self._emit(Opcode.DUP)
@@ -489,16 +487,16 @@ class CodeGen:
                     self._gen(value)
                 self._emit(Opcode.RET)
 
-            case Call(name="getchar", args=args):
+            case Call(name="read", args=args):
                 if args and isinstance(args[0], Ident) and args[0].name in self._input_devices:
                     if len(args) != 1:
-                        msg = "getchar expects 0 or 1 device-label arg"
+                        msg = "read expects 0 or 1 device-label arg"
                         raise CodeGenError(msg)
                     dev = self._input_devices[args[0].name]
                     self._emit(Opcode.LOAD, dev.address)
                 elif not args:
                     if self._current_interrupt_vector is None:
-                        msg = "getchar() without a label can only be used inside an interrupt handler"
+                        msg = "read() without a label can only be used inside an interrupt handler"
                         raise CodeGenError(msg)
                     dev = self._inputs_by_vector.get(self._current_interrupt_vector)
                     if dev is None:
@@ -506,7 +504,7 @@ class CodeGen:
                         raise CodeGenError(msg)
                     self._emit(Opcode.LOAD, dev.address)
                 else:
-                    msg = "getchar expects 0 or 1 device-label arg"
+                    msg = "read expects 0 or 1 device-label arg"
                     raise CodeGenError(msg)
 
             case Call(name="addc", args=args):
@@ -525,33 +523,15 @@ class CodeGen:
                 self._emit(Opcode.DI)
                 self._emit(Opcode.PUSH, 0)  # dummy return value
 
-            case Call(name=name, args=args) if name in _BUILTINS:
-                if args and isinstance(args[0], Ident) and args[0].name in self._output_devices:
-                    device = self._output_devices[args[0].name]
-                    payload = args[1:]
-                else:
-                    device = self._output_devices.get("default")
-                    if device is None:
-                        msg = (
-                            "no 'default' output device configured; "
-                            "use print(<label>, ...) or add 'default' to io.outputs"
-                        )
-                        raise CodeGenError(msg)
-                    payload = args
-
-                mmio = device.address
-                for arg in payload:
+            case Call(name="print", args=args):
+                mmio = self._output_address
+                for arg in args:
                     if isinstance(arg, String):
                         addr = self._alloc_string(arg.value)
                         self._emit_cstr_loop(addr, mmio)
                     else:
                         self._gen(arg)
                         self._emit(Opcode.STORE, mmio)
-
-                if name == "println" and device.kind == "char":
-                    self._emit(Opcode.PUSH, ord("\n"))
-                    self._emit(Opcode.STORE, mmio)
-
                 self._emit(Opcode.PUSH, 0)  # dummy return value
 
             case Call(name=name, args=args):

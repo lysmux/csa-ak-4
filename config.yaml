@@ -1,4 +1,4 @@
-limit: 5000000000000000
+limit: 10000
 
 memory_size:
   instruction: 1000
@@ -9,13 +9,9 @@ stack_size:
   data: 1000
 
 io:
-  outputs:
-    default:
-      kind: char
-      address: 0x222
-    int_output:
-      kind: int
-      address: 0x224
+  output:
+    format: string
+    address: 0x222
   inputs:
     keyboard:
       address: 0x223

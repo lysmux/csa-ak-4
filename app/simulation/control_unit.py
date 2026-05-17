@@ -3,7 +3,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from app.isa.consts import MAX_SIGNED, MIN_SIGNED, WORD_MASK
-from app.isa.flags import Flags, ProgramState
+from app.isa.flag import Flag, ProgramState
 from app.isa.instruction import Instruction
 from app.isa.opcode import Opcode
 from app.isa.state import State
@@ -22,7 +22,7 @@ class CUSnapshot:
     tick: int
     pc: int
     instruction: Instruction
-    flags: Flags
+    flags: Flag
 
     ar: int
     dr: int
@@ -46,7 +46,7 @@ class ControlUnit:
         return_stack: Stack,
         vector_table: dict[int, int] | None = None,
     ) -> None:
-        self._data_path = data_path
+        self.data_path = data_path
         self._instr_memory = instr_memory
         self._return_stack = return_stack
 
@@ -58,7 +58,7 @@ class ControlUnit:
         self._pending_vector: int | None = None
 
         self._instr = Instruction(Opcode.HALT)
-        self._state = State.FETCH
+        self._state = State.START
 
         self._tick = 0
 
@@ -81,14 +81,14 @@ class ControlUnit:
             tick=self._tick,
             pc=self._pc,
             instruction=self._instr,
-            flags=self._data_path.flags,
-            ar=self._data_path._ar,
-            dr=self._data_path._dr,
-            data_memory=self._data_path.memory._memory,
+            flags=self.data_path.flags,
+            ar=self.data_path._ar,
+            dr=self.data_path._dr,
+            data_memory=self.data_path.memory._memory,
             instr_memory=self._instr_memory._memory,
-            data_stack=self._data_path.stack.stack,
-            tos=self._data_path.stack.tos,
-            nos=self._data_path.stack.nos,
+            data_stack=self.data_path.stack.stack,
+            tos=self.data_path.stack.tos,
+            nos=self.data_path.stack.nos,
             return_stack=self._return_stack.stack,
             r_tos=self._return_stack.tos,
         )
@@ -119,7 +119,7 @@ class ControlUnit:
         match self._state:
             case State.START:
                 if ProgramState.IRQ not in self._program_state:
-                    for dev in self._data_path.io_map.values():
+                    for dev in self.data_path.io_map.values():
                         vec = dev.tick(self._tick)
                         if vec is not None and ProgramState.IE in self._program_state:
                             self._pending_vector = vec
@@ -127,86 +127,78 @@ class ControlUnit:
                             break
                 if ProgramState.IRQ in self._program_state:
                     self._state = State.INTERRUPT
+                    self.execute_interrupt()
                 else:
                     self._state = State.FETCH
-            case State.INTERRUPT:
-                self.execute_interrupt()
-            case State.FETCH:
-                self.fetch()
+                    self.fetch()
             case State.EXECUTE:
                 self.execute_step()
-            case State.DONE:
-                self._state = State.START
 
     def fetch(self) -> None:
         self._ir = self._instr_memory.read(self._pc)
-        self._instr = Instruction.from_binary(self._ir)
-
         self.latch_pc(PCMux.NEXT)
 
+        self._instr = Instruction.from_binary(self._ir)
         self._state = State.EXECUTE
 
     def execute_step(self) -> None:
         if self._instr.opcode is Opcode.HALT:
             self._state = State.HALT
             return
+
         if self._instr.opcode is Opcode.JMP:
             self.execute_branch(True)
         if self._instr.opcode is Opcode.JZ:
-            self.execute_branch(Flags.Z in self._data_path.flags)
+            self.execute_branch(self.data_path.flags.has(Flag.Z))
         if self._instr.opcode is Opcode.JNZ:
-            self.execute_branch(Flags.Z not in self._data_path.flags)
+            self.execute_branch(not self.data_path.flags.has(Flag.Z))
         if self._instr.opcode is Opcode.JPL:
-            self.execute_branch(Flags.N not in self._data_path.flags)
+            self.execute_branch(not self.data_path.flags.has(Flag.N))
         if self._instr.opcode is Opcode.JMI:
-            self.execute_branch(Flags.N in self._data_path.flags)
+            self.execute_branch(self.data_path.flags.has(Flag.N))
         if self._instr.opcode is Opcode.JGE:
-            n = Flags.N in self._data_path.flags
-            v = Flags.V in self._data_path.flags
-            self.execute_branch(n == v)
+            self.execute_branch(self.data_path.flags.has(Flag.N) == self.data_path.flags.has(Flag.V))
         if self._instr.opcode is Opcode.JG:
-            n = Flags.N in self._data_path.flags
-            v = Flags.V in self._data_path.flags
-            self.execute_branch(Flags.Z not in self._data_path.flags and n == v)
+            n = Flag.N in self.data_path.flags
+            v = Flag.V in self.data_path.flags
+            self.execute_branch(Flag.Z not in self.data_path.flags and n == v)
         if self._instr.opcode is Opcode.JLE:
-            n = Flags.N in self._data_path.flags
-            v = Flags.V in self._data_path.flags
-            self.execute_branch(Flags.Z in self._data_path.flags or n != v)
+            n = Flag.N & self.data_path.flags
+            v = Flag.V & self.data_path.flags
+            self.execute_branch(bool(Flag.Z & self.data_path.flags) or n != v)
         if self._instr.opcode is Opcode.JL:
-            n = Flags.N in self._data_path.flags
-            v = Flags.V in self._data_path.flags
-            self.execute_branch(n != v)
+            self.execute_branch(self.data_path.flags.has(Flag.N) != self.data_path.flags.has(Flag.V))
         if self._instr.opcode is Opcode.JC:
-            self.execute_branch(Flags.C in self._data_path.flags)
+            self.execute_branch(self.data_path.flags.has(Flag.C))
         if self._instr.opcode is Opcode.JNC:
-            self.execute_branch(Flags.C not in self._data_path.flags)
+            self.execute_branch(not self.data_path.flags.has(Flag.C))
         if self._instr.opcode is Opcode.JV:
-            self.execute_branch(Flags.V in self._data_path.flags)
+            self.execute_branch(self.data_path.flags.has(Flag.V))
         if self._instr.opcode is Opcode.JNV:
-            self.execute_branch(Flags.V not in self._data_path.flags)
+            self.execute_branch(not self.data_path.flags.has(Flag.V))
 
         if self._instr.opcode is Opcode.LOAD:
-            self._data_path.stack.push(self._data_path.read(self._instr.operand))
+            self.data_path.stack.push(self.data_path.read(self._instr.operand))
         if self._instr.opcode is Opcode.STORE:
-            self._data_path.write(self._instr.operand, self._data_path.stack.pop())
+            self.data_path.write(self._instr.operand, self.data_path.stack.pop())
         if self._instr.opcode is Opcode.LOADI:
-            self._data_path.push(self._data_path.read(self._data_path.pop()))
+            self.data_path.push(self.data_path.read(self.data_path.pop()))
         if self._instr.opcode is Opcode.STOREI:
-            self._data_path.write(self._data_path.pop(), self._data_path.pop())
+            self.data_path.write(self.data_path.pop(), self.data_path.pop())
 
         if self._instr.opcode is Opcode.PUSH:
-            self._data_path.push(self._instr.operand)
+            self.data_path.push(self._instr.operand)
         if self._instr.opcode is Opcode.DUP:
-            self._data_path.push(self._data_path.stack.tos)
+            self.data_path.push(self.data_path.stack.tos)
         if self._instr.opcode is Opcode.DROP:
-            self._data_path.stack.pop()
+            self.data_path.stack.pop()
         if self._instr.opcode is Opcode.SWAP:
-            tos = self._data_path.pop()
-            nos = self._data_path.pop()
-            self._data_path.push(tos)
-            self._data_path.push(nos)
+            tos = self.data_path.pop()
+            nos = self.data_path.pop()
+            self.data_path.push(tos)
+            self.data_path.push(nos)
         if self._instr.opcode is Opcode.OVER:
-            self._data_path.push(self._data_path.stack.nos)
+            self.data_path.push(self.data_path.stack.nos)
 
         if self._instr.opcode is Opcode.CALL:
             self.write_r_stack(RStackMux.PC)
@@ -214,9 +206,9 @@ class ControlUnit:
         if self._instr.opcode is Opcode.RET:
             self.latch_pc(PCMux.R_STACK)
         if self._instr.opcode is Opcode.PSHR:
-            self._return_stack.push(self._data_path.pop())
+            self._return_stack.push(self.data_path.pop())
         if self._instr.opcode is Opcode.POPR:
-            self._data_path.stack.push(self._return_stack.pop())
+            self.data_path.stack.push(self._return_stack.pop())
         if self._instr.opcode is Opcode.LOOP:
             cnt = self._return_stack.stack.pop()
             cnt -= 1
@@ -231,53 +223,53 @@ class ControlUnit:
             self._program_state &= ~ProgramState.IE
         if self._instr.opcode is Opcode.RTI:
             self._pc = self._return_stack.pop()
-            self._data_path.flags = self._return_stack.pop()
+            self.data_path.flags = self._return_stack.pop()
             self._program_state |= ProgramState.IE
 
         if self._instr.opcode is Opcode.ADDC:
-            right = self._data_path.stack.pop()
-            left = self._data_path.stack.pop()
-            carry = 1 if Flags.C in self._data_path.flags else 0
+            right = self.data_path.stack.pop()
+            left = self.data_path.stack.pop()
+            carry = 1 if Flag.C in self.data_path.flags else 0
             raw = left + right + carry
             value = raw & WORD_MASK
-            flags = Flags.nz(value)
+            flags = Flag.nz(value)
             if raw > WORD_MASK:
-                flags |= Flags.C
+                flags |= Flag.C
             if (
                 _signed(left) + _signed(right) + carry > MAX_SIGNED
                 or _signed(left) + _signed(right) + carry < MIN_SIGNED
             ):
-                flags |= Flags.V
-            self._data_path.flags = flags
-            self._data_path.stack.push(value)
+                flags |= Flag.V
+            self.data_path.flags = flags
+            self.data_path.stack.push(value)
 
         if self._instr.opcode is Opcode.CMP:
-            self._data_path.cmp()
+            self.data_path.cmp()
 
-        if self._data_path.is_alu_binary_opcode(self._instr.opcode):
-            right = self._data_path.stack.pop()
-            left = self._data_path.stack.pop()
-            result = self._data_path.perform_alu(
+        if self.data_path.is_alu_binary_opcode(self._instr.opcode):
+            right = self.data_path.stack.pop()
+            left = self.data_path.stack.pop()
+            result = self.data_path.perform_alu(
                 opcode=self._instr.opcode,
                 left=left,
                 right=right,
             )
-            self._data_path.stack.push(result)
+            self.data_path.stack.push(result)
 
-        if self._data_path.is_alu_unary_opcode(self._instr.opcode):
-            result = self._data_path.perform_alu(opcode=self._instr.opcode, left=self._data_path.stack.pop())
-            self._data_path.stack.push(result)
+        if self.data_path.is_alu_unary_opcode(self._instr.opcode):
+            result = self.data_path.perform_alu(opcode=self._instr.opcode, left=self.data_path.stack.pop())
+            self.data_path.stack.push(result)
 
-        self._state = State.DONE
+        self._state = State.START
 
     def execute_interrupt(self) -> None:
-        self._return_stack.push(int(self._data_path.flags))
+        self._return_stack.push(int(self.data_path.flags))
         self._return_stack.push(self._pc)
         self._program_state &= ~ProgramState.IE
         self._program_state &= ~ProgramState.IRQ
         self._pc = self._vector_table[self._pending_vector]
         self._pending_vector = None
-        self._state = State.DONE
+        self._state = State.START
 
     def execute_branch(self, condition: bool) -> None:
         if not condition:

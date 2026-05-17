@@ -1,5 +1,5 @@
 import pytest
-from app.isa.flags import Flags
+from app.isa.flag import Flag
 from app.isa.instruction import Instruction
 from app.isa.opcode import Opcode
 from tests.shared import run_simulation
@@ -14,7 +14,7 @@ def test_add():
     ]
     snapshot = run_simulation(instructions, {})
     assert snapshot.tos == 0x3
-    assert snapshot.flags == Flags(0)
+    assert snapshot.flags == Flag(0)
 
 
 def test_add_flag_n():
@@ -27,7 +27,7 @@ def test_add_flag_n():
     ]
     snapshot = run_simulation(instructions, {})
     assert snapshot.tos == 0xFFFFFFFF
-    assert snapshot.flags == Flags.N
+    assert snapshot.flags == Flag.N
 
 
 def test_add_flag_z_c():
@@ -40,7 +40,7 @@ def test_add_flag_z_c():
     ]
     snapshot = run_simulation(instructions, {})
     assert snapshot.tos == 0x0
-    assert snapshot.flags == Flags.Z | Flags.C
+    assert snapshot.flags == Flag.Z | Flag.C
 
 
 def test_add_flag_v():
@@ -53,19 +53,20 @@ def test_add_flag_v():
     ]
     snapshot = run_simulation(instructions, {})
     assert snapshot.tos == 0x80000000
-    assert snapshot.flags == Flags.N | Flags.V
+    assert snapshot.flags == Flag.N | Flag.V
 
 
 def test_sub():
+    # NOS(2) - TOS(1) = 1
     instructions = [
-        Instruction(Opcode.PUSH, 0x1),
         Instruction(Opcode.PUSH, 0x2),
+        Instruction(Opcode.PUSH, 0x1),
         Instruction(Opcode.SUB),
         Instruction(Opcode.HALT),
     ]
     snapshot = run_simulation(instructions, {})
     assert snapshot.tos == 0x1
-    assert snapshot.flags == Flags(0)
+    assert snapshot.flags == Flag(0)
 
 
 def test_sub_flag_z():
@@ -77,33 +78,33 @@ def test_sub_flag_z():
     ]
     snapshot = run_simulation(instructions, {})
     assert snapshot.tos == 0x0
-    assert snapshot.flags == Flags.Z
+    assert snapshot.flags == Flag.Z
 
 
 def test_sub_flag_n_c():
-    # TOS=2, NOS=5 → 2-5 = 0xFFFFFFFD  →  N C
+    # NOS(2) - TOS(5) = 2-5 = 0xFFFFFFFD  →  N C
     instructions = [
-        Instruction(Opcode.PUSH, 0x5),
         Instruction(Opcode.PUSH, 0x2),
+        Instruction(Opcode.PUSH, 0x5),
         Instruction(Opcode.SUB),
         Instruction(Opcode.HALT),
     ]
     snapshot = run_simulation(instructions, {})
     assert snapshot.tos == 0xFFFFFFFD
-    assert snapshot.flags == Flags.N | Flags.C
+    assert snapshot.flags == Flag.N | Flag.C
 
 
 def test_sub_flag_v():
-    # TOS=0x80000000, NOS=0x7FFFFFFF → 0x80000000-0x7FFFFFFF=1  →  V
+    # NOS(0x80000000) - TOS(0x7FFFFFFF) = 1  →  V
     instructions = [
-        Instruction(Opcode.PUSH, 0x7FFFFFFF),
         Instruction(Opcode.PUSH, 0x80000000),
+        Instruction(Opcode.PUSH, 0x7FFFFFFF),
         Instruction(Opcode.SUB),
         Instruction(Opcode.HALT),
     ]
     snapshot = run_simulation(instructions, {})
     assert snapshot.tos == 0x1
-    assert snapshot.flags == Flags.V
+    assert snapshot.flags == Flag.V
 
 
 def test_mul():
@@ -115,7 +116,7 @@ def test_mul():
     ]
     snapshot = run_simulation(instructions, {})
     assert snapshot.tos == 0x4
-    assert snapshot.flags == Flags(0)
+    assert snapshot.flags == Flag(0)
 
 
 def test_div():
@@ -127,7 +128,7 @@ def test_div():
     ]
     snapshot = run_simulation(instructions, {})
     assert snapshot.tos == 0x1
-    assert snapshot.flags == Flags(0)
+    assert snapshot.flags == Flag(0)
 
 
 def test_inc():
@@ -138,7 +139,7 @@ def test_inc():
     ]
     snapshot = run_simulation(instructions, {})
     assert snapshot.tos == 0x2
-    assert snapshot.flags == Flags(0)
+    assert snapshot.flags == Flag(0)
 
 
 def test_inc_flag_z_c():
@@ -150,7 +151,7 @@ def test_inc_flag_z_c():
     ]
     snapshot = run_simulation(instructions, {})
     assert snapshot.tos == 0x0
-    assert snapshot.flags == Flags.Z | Flags.C
+    assert snapshot.flags == Flag.Z | Flag.C
 
 
 def test_inc_flag_n_v():
@@ -162,7 +163,7 @@ def test_inc_flag_n_v():
     ]
     snapshot = run_simulation(instructions, {})
     assert snapshot.tos == 0x80000000
-    assert snapshot.flags == Flags.N | Flags.V
+    assert snapshot.flags == Flag.N | Flag.V
 
 
 def test_dec():
@@ -173,7 +174,7 @@ def test_dec():
     ]
     snapshot = run_simulation(instructions, {})
     assert snapshot.tos == 0x0
-    assert snapshot.flags == Flags.Z
+    assert snapshot.flags == Flag.Z
 
 
 def test_dec_flag_n_c():
@@ -185,7 +186,7 @@ def test_dec_flag_n_c():
     ]
     snapshot = run_simulation(instructions, {})
     assert snapshot.tos == 0xFFFFFFFF
-    assert snapshot.flags == Flags.N | Flags.C
+    assert snapshot.flags == Flag.N | Flag.C
 
 
 def test_dec_flag_v():
@@ -197,7 +198,7 @@ def test_dec_flag_v():
     ]
     snapshot = run_simulation(instructions, {})
     assert snapshot.tos == 0x7FFFFFFF
-    assert snapshot.flags == Flags.V
+    assert snapshot.flags == Flag.V
 
 
 def test_neg():
@@ -208,7 +209,7 @@ def test_neg():
     ]
     snapshot = run_simulation(instructions, {})
     assert snapshot.tos == 0xFFFFFFFF
-    assert snapshot.flags == Flags.N | Flags.C
+    assert snapshot.flags == Flag.N | Flag.C
 
 
 def test_neg_flag_z():
@@ -220,7 +221,7 @@ def test_neg_flag_z():
     ]
     snapshot = run_simulation(instructions, {})
     assert snapshot.tos == 0x0
-    assert snapshot.flags == Flags.Z
+    assert snapshot.flags == Flag.Z
 
 
 def test_neg_flag_v():
@@ -232,7 +233,7 @@ def test_neg_flag_v():
     ]
     snapshot = run_simulation(instructions, {})
     assert snapshot.tos == 0x80000000
-    assert snapshot.flags == Flags.N | Flags.C | Flags.V
+    assert snapshot.flags == Flag.N | Flag.C | Flag.V
 
 
 def test_and():
@@ -244,7 +245,7 @@ def test_and():
     ]
     snapshot = run_simulation(instructions, {})
     assert snapshot.tos == 0b001
-    assert snapshot.flags == Flags(0)
+    assert snapshot.flags == Flag(0)
 
 
 def test_and_flag_n():
@@ -257,7 +258,7 @@ def test_and_flag_n():
     ]
     snapshot = run_simulation(instructions, {})
     assert snapshot.tos == 0x80000000
-    assert snapshot.flags == Flags.N
+    assert snapshot.flags == Flag.N
 
 
 def test_and_flag_z():
@@ -270,7 +271,7 @@ def test_and_flag_z():
     ]
     snapshot = run_simulation(instructions, {})
     assert snapshot.tos == 0x0
-    assert snapshot.flags == Flags.Z
+    assert snapshot.flags == Flag.Z
 
 
 def test_or():
@@ -282,7 +283,7 @@ def test_or():
     ]
     snapshot = run_simulation(instructions, {})
     assert snapshot.tos == 0b101
-    assert snapshot.flags == Flags(0)
+    assert snapshot.flags == Flag(0)
 
 
 def test_or_flag_n():
@@ -295,7 +296,7 @@ def test_or_flag_n():
     ]
     snapshot = run_simulation(instructions, {})
     assert snapshot.tos == 0x80000001
-    assert snapshot.flags == Flags.N
+    assert snapshot.flags == Flag.N
 
 
 def test_or_flag_z():
@@ -307,7 +308,7 @@ def test_or_flag_z():
     ]
     snapshot = run_simulation(instructions, {})
     assert snapshot.tos == 0x0
-    assert snapshot.flags == Flags.Z
+    assert snapshot.flags == Flag.Z
 
 
 def test_xor():
@@ -319,7 +320,7 @@ def test_xor():
     ]
     snapshot = run_simulation(instructions, {})
     assert snapshot.tos == 0b100
-    assert snapshot.flags == Flags(0)
+    assert snapshot.flags == Flag(0)
 
 
 def test_xor_flag_n():
@@ -332,7 +333,7 @@ def test_xor_flag_n():
     ]
     snapshot = run_simulation(instructions, {})
     assert snapshot.tos == 0x80000000
-    assert snapshot.flags == Flags.N
+    assert snapshot.flags == Flag.N
 
 
 def test_xor_flag_z():
@@ -344,7 +345,7 @@ def test_xor_flag_z():
     ]
     snapshot = run_simulation(instructions, {})
     assert snapshot.tos == 0x0
-    assert snapshot.flags == Flags.Z
+    assert snapshot.flags == Flag.Z
 
 
 @pytest.mark.skip(reason="Need fix")
@@ -366,7 +367,7 @@ def test_shl():
     ]
     snapshot = run_simulation(instructions, {})
     assert snapshot.tos == 0b1010
-    assert snapshot.flags == Flags(0)
+    assert snapshot.flags == Flag(0)
 
 
 def test_shl_flag_n():
@@ -378,7 +379,7 @@ def test_shl_flag_n():
     ]
     snapshot = run_simulation(instructions, {})
     assert snapshot.tos == 0x80000000
-    assert snapshot.flags == Flags.N
+    assert snapshot.flags == Flag.N
 
 
 def test_shl_flag_z_c():
@@ -390,7 +391,7 @@ def test_shl_flag_z_c():
     ]
     snapshot = run_simulation(instructions, {})
     assert snapshot.tos == 0x0
-    assert snapshot.flags == Flags.Z | Flags.C
+    assert snapshot.flags == Flag.Z | Flag.C
 
 
 def test_shr():
@@ -401,7 +402,7 @@ def test_shr():
     ]
     snapshot = run_simulation(instructions, {})
     assert snapshot.tos == 0b10
-    assert snapshot.flags == Flags.C
+    assert snapshot.flags == Flag.C
 
 
 def test_shr_flag_z_c():
@@ -413,4 +414,4 @@ def test_shr_flag_z_c():
     ]
     snapshot = run_simulation(instructions, {})
     assert snapshot.tos == 0x0
-    assert snapshot.flags == Flags.Z | Flags.C
+    assert snapshot.flags == Flag.Z | Flag.C

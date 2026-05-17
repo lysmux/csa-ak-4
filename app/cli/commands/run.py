@@ -34,11 +34,7 @@ def run(file: Path, config_path: Path | None, trace: bool) -> None:
 
     result = simulate(program, config, on_tick=on_tick)
 
-    out.section("Devices").table(
-        list(result.outputs.items()),
-        key_fmt=partial(click.style, fg="cyan", bold=True),
-        val_fmt=partial(click.style, fg="white"),
-    )
+    out.section("Output").line(result.output)
 
     out.section("Summary").table(
         [("ticks:", str(result.ticks)), ("time:", f"{result.wall_ms:.3f} ms")],
