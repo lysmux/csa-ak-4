@@ -4,9 +4,10 @@ from app.simulation.control_unit import ControlUnit
 from app.simulation.data_path import DataPath
 from app.simulation.io import Device, Input, Output
 from app.simulation.memory import Memory
+from app.simulation.runner import run_control_unit
 from app.simulation.stack import Stack
 from app.translator.analyzer import Analyzer, SemanticError
-from app.translator.codegen import CodeGen, CodeGenError
+from app.translator.codegen import CodeGen, CodeGenError, CompiledProgram
 from app.translator.lexer import Lexer
 from app.translator.parser import Parser
 
@@ -22,17 +23,16 @@ OUTPUTS = {"default": OutputDeviceConfig(address=OUT_ADDR, default=True)}
 
 
 def _compile(
-        src: str,
-        inputs: dict[str, InputDeviceConfig] = INPUTS,
-):
+    src: str,
+    inputs: dict[str, InputDeviceConfig] = INPUTS,
+) -> CompiledProgram:
     tokens = Lexer(src).tokenize()
     ast = Parser(tokens).parse()
     Analyzer(output_devices=set(OUTPUTS), input_devices=set(inputs)).analyze(ast)
     return CodeGen(output_devices=OUTPUTS, input_devices=inputs).generate(ast)
 
 
-def _run(src: str, schedules: dict[int, list[tuple[int, str]]] | None = None,
-         limit: int = 2000) -> str:
+def _run(src: str, schedules: dict[int, list[tuple[int, str]]] | None = None, limit: int = 2000) -> str:
     program = _compile(src)
     instr_mem = Memory(2000)
     instr_mem.fill(program.instructions)
@@ -56,13 +56,14 @@ def _run(src: str, schedules: dict[int, list[tuple[int, str]]] | None = None,
         return_stack=return_stack,
         vector_table=dict(program.interrupt_handlers),
     )
-    cu.run(limit=limit)
+    run_control_unit(cu, limit=limit)
     return output.as_string()
 
 
 # ---------------------------------------------------------------------------
 # Codegen: address resolution
 # ---------------------------------------------------------------------------
+
 
 def test_read_in_handler_uses_vector_device():
     """read() inside interrupt 0 reads from device with vector=0 (keyboard)."""
@@ -99,6 +100,7 @@ def test_read_with_explicit_label():
 # Analyzer errors
 # ---------------------------------------------------------------------------
 
+
 def test_read_without_label_outside_handler_raises():
     with pytest.raises(SemanticError, match="read"):
         _compile("fun main() { var c: int = read(); }")
@@ -123,6 +125,7 @@ def test_input_label_as_value_raises():
 # Codegen errors
 # ---------------------------------------------------------------------------
 
+
 def test_read_in_handler_with_no_matching_input_raises():
     """Interrupt vector 7 has no input device → CodeGenError."""
     with pytest.raises(CodeGenError, match="no input device configured for interrupt vector 7"):
@@ -136,15 +139,16 @@ def test_read_in_handler_with_no_matching_input_raises():
 
 def test_codegen_with_no_input_devices_outside_handler():
     """No input devices configured, read() inside handler still wants one."""
+    tokens = Lexer(
+        """
+        interrupt 0 h() { print(read()); }
+        fun main() { while (true) {} }
+        """
+    ).tokenize()
+    ast = Parser(tokens).parse()
+    Analyzer(output_devices=set(OUTPUTS)).analyze(ast)
+
     with pytest.raises(CodeGenError, match="no input device"):
-        tokens = Lexer(
-            """
-            interrupt 0 h() { print(read()); }
-            fun main() { while (true) {} }
-            """
-        ).tokenize()
-        ast = Parser(tokens).parse()
-        Analyzer(output_devices=set(OUTPUTS)).analyze(ast)
         CodeGen(
             output_devices=OUTPUTS,
             input_devices={},

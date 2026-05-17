@@ -38,7 +38,11 @@ def run(file: Path, config_path: Path | None, trace: bool) -> None:
     out.table(list(result.outputs.items()), key_fmt=partial(click.style, fg="cyan"))
 
     out.section("Summary").table(
-        [("ticks:", str(result.ticks)), ("time:", f"{result.wall_ms:.3f} ms")],
+        [
+            ("stop reason:", result.stop_reason.value),
+            ("ticks:", str(result.ticks)),
+            ("time:", f"{result.wall_ms:.3f} ms"),
+        ],
         key_fmt=partial(click.style, bold=True),
         val_fmt=partial(click.style, fg="yellow"),
     )

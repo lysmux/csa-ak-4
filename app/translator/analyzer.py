@@ -61,7 +61,6 @@ class BuiltinSpec:
 BUILTINS: dict[str, BuiltinSpec] = {
     "print": BuiltinSpec(params=None, return_type=None),
     "read": BuiltinSpec(params=None, return_type=Type.INT),
-    "addc": BuiltinSpec(params=[Type.INT, Type.INT], return_type=Type.INT),
     "enable_interrupts": BuiltinSpec(params=[], return_type=None),
     "disable_interrupts": BuiltinSpec(params=[], return_type=None),
 }

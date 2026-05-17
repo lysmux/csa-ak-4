@@ -20,7 +20,6 @@ class DataPath:
         self._flags: Flag = Flag(0)
         self._alu = Alu()
 
-        self._dr = 0
         self._ar = 0
 
         self._tos = 0
@@ -52,6 +51,9 @@ class DataPath:
         self.stack.push(value)
         self._flags = Flag.nz(value)
 
+    def push_raw(self, value: int) -> None:
+        self.stack.push(value)
+
     def cmp(self) -> None:
         result = self._alu.perform(Opcode.SUB, self.stack.nos, self.stack.tos)
         self._flags = result.flags
@@ -61,13 +63,16 @@ class DataPath:
         self._flags = Flag.nz(self.stack.tos)
         return result
 
-    def write(self, address: int, value: int) -> None:
-        if device := self.io_map.get(address):
+    def pop_raw(self) -> int:
+        return self.stack.pop()
+
+    def write(self, value: int) -> None:
+        if device := self.io_map.get(self._ar):
             device.write(value)
         else:
-            self.memory.write(address, value)
+            self.memory.write(self._ar, value)
 
-    def read(self, address: int) -> int:
-        if device := self.io_map.get(address):
+    def read(self) -> int:
+        if device := self.io_map.get(self._ar):
             return device.read()
-        return self.memory.read(address)
+        return self.memory.read(self._ar)

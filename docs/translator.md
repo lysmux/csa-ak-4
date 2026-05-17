@@ -272,7 +272,7 @@ class Symbol:
 
 Внутренние области могут переопределять имена из внешних.
 
-Встроенные функции (`print`, `println`, `getchar`, `addc`, `enable_interrupts`, `disable_interrupts`) и метки устройств (переданные в `Analyzer(output_devices=..., input_devices=...)`) регистрируются в глобальной области на этапе инициализации.
+Встроенные функции (`print`, `println`, `getchar`, `enable_interrupts`, `disable_interrupts`) и метки устройств (переданные в `Analyzer(output_devices=..., input_devices=...)`) регистрируются в глобальной области на этапе инициализации.
 
 ### 3.3 Встроенные функции
 
@@ -281,7 +281,6 @@ class Symbol:
 | `print` | любая | Вывод аргументов на MMIO-устройство |
 | `println` | любая | Как `print`, для char-устройств добавляет `\n` |
 | `getchar` | 0 или 1 | Чтение символа с MMIO-устройства |
-| `addc` | 2 | Сложение с учётом carry-флага |
 | `enable_interrupts` | 0 | Выставить IE |
 | `disable_interrupts` | 0 | Сбросить IE |
 
@@ -614,16 +613,6 @@ exit:
 - С явной меткой: `LOAD device.address`
 - Без метки (внутри обработчика прерывания): устройство находится по `_inputs_by_vector[_current_interrupt_vector]` → `LOAD device.address`
 
-**`addc(a, b)`:**
-
-```
-gen(a)
-gen(b)
-ADDC          ← TOS ← NOS + TOS + C (carry-флаг от предыдущей ADD)
-```
-
-Важно: аргументы должны загружаться через `LOAD` (переменные), а не `PUSH` (литералы). `PUSH` сбрасывает C-флаг до выполнения `ADDC`.
-
 **`enable_interrupts()` / `disable_interrupts()`:**
 
 ```
@@ -910,23 +899,6 @@ interrupt 0 on_char() {
 fun main() {
     enable_interrupts();
     while (true) {}
-}
-```
-
-### 64-битное сложение
-
-```cube
-fun main() {
-    var a_hi: int = 0;
-    var a_lo: int = 0xFFFFFFFF;   // A = 2^32 - 1
-    var b_hi: int = 0;
-    var b_lo: int = 1;            // B = 1
-
-    var sum_lo: int = a_lo + b_lo;        // ADD: C = 1
-    var sum_hi: int = addc(a_hi, b_hi);   // ADDC использует C
-
-    print(int_output, sum_hi);   // 1
-    print(int_output, sum_lo);   // 0
 }
 ```
 

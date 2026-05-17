@@ -1,4 +1,5 @@
 """Shared helpers for golden tests."""
+
 from __future__ import annotations
 
 import io
@@ -11,6 +12,7 @@ from app.simulation.control_unit import ControlUnit
 from app.simulation.data_path import DataPath
 from app.simulation.io import Device, Input, Output
 from app.simulation.memory import Memory
+from app.simulation.runner import run_control_unit
 from app.simulation.stack import Stack
 from app.translator.analyzer import Analyzer
 from app.translator.codegen import CodeGen, CompiledProgram
@@ -25,6 +27,7 @@ GOLDEN_DIR = Path(__file__).parent
 # PyYAML: literal block scalar representer  (produces  |  or  |-  style)
 # ---------------------------------------------------------------------------
 
+
 class _Lit(str):
     """Marker class: dump this string as a YAML literal block scalar."""
 
@@ -35,15 +38,14 @@ def _lit(s: str) -> _Lit:
 
 yaml.add_representer(
     _Lit,
-    lambda dumper, data: dumper.represent_scalar(
-        "tag:yaml.org,2002:str", data, style="|"
-    ),
+    lambda dumper, data: dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|"),
 )
 
 
 # ---------------------------------------------------------------------------
 # pytest option
 # ---------------------------------------------------------------------------
+
 
 def pytest_addoption(parser: object) -> None:
     parser.addoption(
@@ -57,6 +59,7 @@ def pytest_addoption(parser: object) -> None:
 # ---------------------------------------------------------------------------
 # Compilation / simulation helpers
 # ---------------------------------------------------------------------------
+
 
 def compile_source(
     src: str,
@@ -86,9 +89,7 @@ def build_dbg(program: CompiledProgram) -> str:
     lines = ["Instructions:"]
     for addr, word in enumerate(program.instructions):
         instr = Instruction.from_binary(word)
-        lines.append(
-            f"  0x{addr:04x} - {word:#010x} - {instr.opcode.name} {instr.operand:#010x}"
-        )
+        lines.append(f"  0x{addr:04x} - {word:#010x} - {instr.opcode.name} {instr.operand:#010x}")
     lines.append("\nData:")
     for addr, cell in enumerate(program.data):
         lines.append(f"  0x{addr:04x} - {cell & 0xFFFFFFFF:#010x} - .word {cell:#010x}")
@@ -110,19 +111,11 @@ def run_golden(
     rs = Stack(config.stack_size.ret)
     ds = Stack(config.stack_size.data)
 
-    outputs = {
-        name: Output(format=cfg.format)
-        for name, cfg in config.io.outputs.items()
-    }
-    io_map: dict[int, Device] = {
-        cfg.address: outputs[name]
-        for name, cfg in config.io.outputs.items()
-    }
+    outputs = {name: Output(format=cfg.format) for name, cfg in config.io.outputs.items()}
+    io_map: dict[int, Device] = {cfg.address: outputs[name] for name, cfg in config.io.outputs.items()}
     for cfg in config.io.inputs.values():
         if cfg.address not in io_map:
-            io_map[cfg.address] = Input(
-                schedule=list(cfg.schedule), vector=cfg.vector
-            )
+            io_map[cfg.address] = Input(schedule=list(cfg.schedule), vector=cfg.vector)
 
     from app.cli.trace import trace_line
 
@@ -139,13 +132,14 @@ def run_golden(
         return_stack=rs,
         vector_table=dict(program.interrupt_handlers),
     )
-    cu.run(limit=config.limit, on_tick=on_tick)
+    run_control_unit(cu, limit=config.limit, on_tick=on_tick)
     return cu, outputs, trace
 
 
 # ---------------------------------------------------------------------------
 # Snapshot assembly
 # ---------------------------------------------------------------------------
+
 
 def build_snapshot(
     name: str,
@@ -164,8 +158,7 @@ def build_snapshot(
         "config": config_dict,
         "max_trace": max_trace,
         "expected_output": {
-            name: _lit(value) if "\n" in value or len(value) > 40 else value
-            for name, value in output.items()
+            name: _lit(value) if "\n" in value or len(value) > 40 else value for name, value in output.items()
         },
         "ast": _lit(ast_dump),
         "machine_code": _lit(dbg),

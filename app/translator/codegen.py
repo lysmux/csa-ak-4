@@ -517,14 +517,6 @@ class CodeGen:
                     msg = "read expects 0 or 1 device-label arg"
                     raise CodeGenError(msg)
 
-            case Call(name="addc", args=args):
-                if len(args) != 2:
-                    msg = "addc expects exactly 2 args"
-                    raise CodeGenError(msg)
-                self._gen(args[0])
-                self._gen(args[1])
-                self._emit(Opcode.ADDC)
-
             case Call(name="enable_interrupts"):
                 self._emit(Opcode.EI)
                 self._emit(Opcode.PUSH, 0)  # dummy return value

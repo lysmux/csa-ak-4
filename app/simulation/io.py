@@ -3,10 +3,12 @@ from typing import Literal
 
 class Device:
     def read(self) -> int:
-        raise NotImplementedError(f"{type(self).__name__} does not support read")
+        msg = f"{type(self).__name__} does not support read"
+        raise NotImplementedError(msg)
 
     def write(self, value: int) -> None:
-        raise NotImplementedError(f"{type(self).__name__} does not support write")
+        msg = f"{type(self).__name__} does not support write"
+        raise NotImplementedError(msg)
 
     def tick(self, current_tick: int) -> int | None:
         return None

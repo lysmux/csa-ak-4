@@ -4,12 +4,13 @@ from app.isa.instruction import Instruction
 from app.simulation.control_unit import ControlUnit, CUSnapshot
 from app.simulation.data_path import DataPath
 from app.simulation.memory import Memory
+from app.simulation.runner import run_control_unit
 from app.simulation.stack import Stack
 
 
 def run_simulation(
-        instructions: list[Instruction],
-        initial_memory: dict[int, int],
+    instructions: list[Instruction],
+    initial_memory: dict[int, int],
 ) -> CUSnapshot:
     instr_memory = Memory(50)
     instr_memory.fill([instr.to_binary() for instr in instructions])
@@ -33,8 +34,9 @@ def run_simulation(
         return_stack=return_stack,
     )
 
-    cu.run()
+    run_control_unit(cu)
 
     return cu.snapshot
+
 
 type SimulationTest = Callable[[list[Instruction], dict[int, int]], CUSnapshot]

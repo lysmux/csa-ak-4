@@ -1,19 +1,14 @@
-import logging
-from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Never
 
-from app.isa.consts import MAX_SIGNED, MIN_SIGNED, WORD_MASK
 from app.isa.flag import Flag, ProgramState
 from app.isa.instruction import Instruction
 from app.isa.opcode import Opcode
 from app.isa.state import State
-from app.simulation.alu import _signed
 from app.simulation.data_path import DataPath
 from app.simulation.memory import Memory
 from app.simulation.mux import PCMux, RStackMux
 from app.simulation.stack import Stack
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -25,7 +20,6 @@ class CUSnapshot:
     flags: Flag
 
     ar: int
-    dr: int
 
     data_memory: list[int]
     instr_memory: list[int]
@@ -59,6 +53,7 @@ class ControlUnit:
 
         self._instr = Instruction(Opcode.HALT)
         self._state = State.START
+        self._step = 0
 
         self._tick = 0
 
@@ -75,6 +70,14 @@ class ControlUnit:
         return self._instr
 
     @property
+    def current_state(self) -> State:
+        return self._state
+
+    @property
+    def current_step(self) -> int:
+        return self._step
+
+    @property
     def snapshot(self) -> CUSnapshot:
         return CUSnapshot(
             state=self._state,
@@ -83,7 +86,6 @@ class ControlUnit:
             instruction=self._instr,
             flags=self.data_path.flags,
             ar=self.data_path._ar,
-            dr=self.data_path._dr,
             data_memory=self.data_path.memory._memory,
             instr_memory=self._instr_memory._memory,
             data_stack=self.data_path.stack.stack,
@@ -100,7 +102,10 @@ class ControlUnit:
             case PCMux.ADDRESS:
                 self._pc = self._instr.operand
             case PCMux.VECTOR:
-                self._pc = self._vector_table[0]
+                if self._pending_vector is None:
+                    msg = "Interrupt vector latch requested without pending vector"
+                    raise RuntimeError(msg)
+                self._pc = self._vector_table[self._pending_vector]
             case PCMux.R_STACK:
                 self._pc = self._return_stack.pop()
 
@@ -118,174 +123,333 @@ class ControlUnit:
 
         match self._state:
             case State.START:
-                if ProgramState.IRQ not in self._program_state:
-                    for dev in self.data_path.io_map.values():
-                        vec = dev.tick(self._tick)
-                        if vec is not None and ProgramState.IE in self._program_state:
-                            self._pending_vector = vec
-                            self._program_state |= ProgramState.IRQ
-                            break
-                if ProgramState.IRQ in self._program_state:
-                    self._state = State.INTERRUPT
-                    self.execute_interrupt()
-                else:
-                    self._state = State.FETCH
-                    self.fetch()
+                self._apply_state(self.decode_start_signals())
+            case State.FETCH:
+                self._apply_state(self.decode_fetch_signals())
+            case State.INTERRUPT:
+                self.decode_interrupt_signals()
             case State.EXECUTE:
-                self.execute_step()
+                self.decode_execute_signals()
+            case State.DONE:
+                self._apply_state(State.START)
+            case State.HALT:
+                return
 
-    def fetch(self) -> None:
+    def decode_start_signals(self) -> State:
+        if ProgramState.IRQ not in self._program_state:
+            for dev in self.data_path.io_map.values():
+                vec = dev.tick(self._tick)
+                if vec is not None and ProgramState.IE in self._program_state:
+                    self._pending_vector = vec
+                    self._program_state |= ProgramState.IRQ
+                    break
+
+        if ProgramState.IRQ in self._program_state:
+            return State.INTERRUPT
+
+        return State.FETCH
+
+    def decode_fetch_signals(self) -> State:
         self._ir = self._instr_memory.read(self._pc)
         self.latch_pc(PCMux.NEXT)
-
         self._instr = Instruction.from_binary(self._ir)
-        self._state = State.EXECUTE
+        return State.EXECUTE
 
-    def execute_step(self) -> None:
-        if self._instr.opcode is Opcode.HALT:
-            self._state = State.HALT
+    def decode_interrupt_signals(self) -> None:
+        match self._step:
+            case 0:
+                self._return_stack.push(int(self.data_path.flags))
+                self._advance_step()
+            case 1:
+                self._return_stack.push(self._pc)
+                self._advance_step()
+            case 2:
+                self._program_state &= ~ProgramState.IE
+                self._advance_step()
+            case 3:
+                self._program_state &= ~ProgramState.IRQ
+                self._advance_step()
+            case 4:
+                self.latch_pc(PCMux.VECTOR)
+                self._pending_vector = None
+                self._apply_state(State.START)
+            case _:
+                self._invalid_step()
+
+    def decode_execute_signals(self) -> None:
+        opcode = self._instr.opcode
+
+        if opcode is Opcode.HALT:
+            self._apply_state(State.HALT)
             return
 
-        if self._instr.opcode is Opcode.JMP:
-            self.execute_branch(True)
-        if self._instr.opcode is Opcode.JZ:
-            self.execute_branch(self.data_path.flags.has(Flag.Z))
-        if self._instr.opcode is Opcode.JNZ:
-            self.execute_branch(not self.data_path.flags.has(Flag.Z))
-        if self._instr.opcode is Opcode.JPL:
-            self.execute_branch(not self.data_path.flags.has(Flag.N))
-        if self._instr.opcode is Opcode.JMI:
-            self.execute_branch(self.data_path.flags.has(Flag.N))
-        if self._instr.opcode is Opcode.JGE:
-            self.execute_branch(self.data_path.flags.has(Flag.N) == self.data_path.flags.has(Flag.V))
-        if self._instr.opcode is Opcode.JG:
-            n = Flag.N in self.data_path.flags
-            v = Flag.V in self.data_path.flags
-            self.execute_branch(Flag.Z not in self.data_path.flags and n == v)
-        if self._instr.opcode is Opcode.JLE:
-            n = Flag.N & self.data_path.flags
-            v = Flag.V & self.data_path.flags
-            self.execute_branch(bool(Flag.Z & self.data_path.flags) or n != v)
-        if self._instr.opcode is Opcode.JL:
-            self.execute_branch(self.data_path.flags.has(Flag.N) != self.data_path.flags.has(Flag.V))
-        if self._instr.opcode is Opcode.JC:
-            self.execute_branch(self.data_path.flags.has(Flag.C))
-        if self._instr.opcode is Opcode.JNC:
-            self.execute_branch(not self.data_path.flags.has(Flag.C))
-        if self._instr.opcode is Opcode.JV:
-            self.execute_branch(self.data_path.flags.has(Flag.V))
-        if self._instr.opcode is Opcode.JNV:
-            self.execute_branch(not self.data_path.flags.has(Flag.V))
+        if opcode in _ONE_CYCLE_OPCODES:
+            self._execute_one_cycle(opcode)
+            self._complete_instruction()
+            return
 
-        if self._instr.opcode is Opcode.LOAD:
-            self.data_path.stack.push(self.data_path.read(self._instr.operand))
-        if self._instr.opcode is Opcode.STORE:
-            self.data_path.write(self._instr.operand, self.data_path.stack.pop())
-        if self._instr.opcode is Opcode.LOADI:
-            self.data_path.push(self.data_path.read(self.data_path.pop()))
-        if self._instr.opcode is Opcode.STOREI:
-            self.data_path.write(self.data_path.pop(), self.data_path.pop())
+        match opcode:
+            case Opcode.CALL:
+                self._execute_call()
+            case Opcode.PSHR:
+                self._execute_pshr()
+            case Opcode.POPR:
+                self._execute_popr()
+            case Opcode.LOAD:
+                self._execute_load()
+            case Opcode.STORE:
+                self._execute_store()
+            case Opcode.LOADI:
+                self._execute_loadi()
+            case Opcode.STOREI:
+                self._execute_storei()
+            case Opcode.RTI:
+                self._execute_rti()
+            case _:
+                msg = f"Unsupported opcode: {opcode.name}"
+                raise NotImplementedError(msg)
 
-        if self._instr.opcode is Opcode.PUSH:
-            self.data_path.push(self._instr.operand)
-        if self._instr.opcode is Opcode.DUP:
-            self.data_path.push(self.data_path.stack.tos)
-        if self._instr.opcode is Opcode.DROP:
-            self.data_path.stack.pop()
-        if self._instr.opcode is Opcode.SWAP:
-            tos = self.data_path.pop()
-            nos = self.data_path.pop()
-            self.data_path.push(tos)
-            self.data_path.push(nos)
-        if self._instr.opcode is Opcode.OVER:
-            self.data_path.push(self.data_path.stack.nos)
+    def _execute_one_cycle(self, opcode: Opcode) -> None:
+        if self._step != 0:
+            self._invalid_step()
 
-        if self._instr.opcode is Opcode.CALL:
-            self.write_r_stack(RStackMux.PC)
-            self.latch_pc(PCMux.ADDRESS)
-        if self._instr.opcode is Opcode.RET:
-            self.latch_pc(PCMux.R_STACK)
-        if self._instr.opcode is Opcode.PSHR:
-            self._return_stack.push(self.data_path.pop())
-        if self._instr.opcode is Opcode.POPR:
-            self.data_path.stack.push(self._return_stack.pop())
-        if self._instr.opcode is Opcode.LOOP:
-            cnt = self._return_stack.stack.pop()
-            cnt -= 1
-            self._return_stack.push(cnt)
+        if opcode is Opcode.NOP:
+            return
 
-            if cnt != 0:
+        if opcode in _BRANCH_OPCODES:
+            self.execute_branch(self._branch_condition(opcode))
+            return
+
+        match opcode:
+            case Opcode.PUSH:
+                self.data_path.push(self._instr.operand)
+            case Opcode.DUP:
+                self.data_path.push(self.data_path.stack.tos)
+            case Opcode.DROP:
+                self.data_path.pop_raw()
+            case Opcode.SWAP:
+                self._swap_data_stack_top()
+            case Opcode.OVER:
+                self.data_path.push(self.data_path.stack.nos)
+            case Opcode.RET:
+                self.latch_pc(PCMux.R_STACK)
+            case Opcode.LOOP:
+                self._execute_loop()
+            case Opcode.EI:
+                self._program_state |= ProgramState.IE
+            case Opcode.DI:
+                self._program_state &= ~ProgramState.IE
+            case Opcode.CMP:
+                self.data_path.cmp()
+            case _ if self.data_path.is_alu_binary_opcode(opcode):
+                right = self.data_path.pop_raw()
+                left = self.data_path.pop_raw()
+                result = self.data_path.perform_alu(opcode=opcode, left=left, right=right)
+                self.data_path.push_raw(result)
+            case _ if self.data_path.is_alu_unary_opcode(opcode):
+                result = self.data_path.perform_alu(opcode=opcode, left=self.data_path.pop_raw())
+                self.data_path.push_raw(result)
+            case _:
+                msg = f"Unsupported one-cycle opcode: {opcode.name}"
+                raise NotImplementedError(msg)
+
+    def _execute_call(self) -> None:
+        match self._step:
+            case 0:
+                self.write_r_stack(RStackMux.PC)
+                self._advance_step()
+            case 1:
                 self.latch_pc(PCMux.ADDRESS)
+                self._complete_instruction()
+            case _:
+                self._invalid_step()
 
-        if self._instr.opcode is Opcode.EI:
-            self._program_state |= ProgramState.IE
-        if self._instr.opcode is Opcode.DI:
-            self._program_state &= ~ProgramState.IE
-        if self._instr.opcode is Opcode.RTI:
-            self._pc = self._return_stack.pop()
-            self.data_path.flags = self._return_stack.pop()
-            self._program_state |= ProgramState.IE
+    def _execute_pshr(self) -> None:
+        match self._step:
+            case 0:
+                # self.data_path.latch_dr(self.data_path.stack.tos)
+                self.write_r_stack(RStackMux.ALU)
+                self.data_path.pop()
+                self._complete_instruction()
+            case _:
+                self._invalid_step()
 
-        if self._instr.opcode is Opcode.ADDC:
-            right = self.data_path.stack.pop()
-            left = self.data_path.stack.pop()
-            carry = 1 if Flag.C in self.data_path.flags else 0
-            raw = left + right + carry
-            value = raw & WORD_MASK
-            flags = Flag.nz(value)
-            if raw > WORD_MASK:
-                flags |= Flag.C
-            if (
-                _signed(left) + _signed(right) + carry > MAX_SIGNED
-                or _signed(left) + _signed(right) + carry < MIN_SIGNED
-            ):
-                flags |= Flag.V
-            self.data_path.flags = flags
-            self.data_path.stack.push(value)
+    def _execute_popr(self) -> None:
+        match self._step:
+            case 0:
+                self.data_path.push(self._return_stack.tos)
+                self._return_stack.pop()
+                self._complete_instruction()
+            case _:
+                self._invalid_step()
 
-        if self._instr.opcode is Opcode.CMP:
-            self.data_path.cmp()
+    def _execute_load(self) -> None:
+        match self._step:
+            case 0:
+                self.data_path.latch_ar(self._instr.operand)
+                self._advance_step()
+            case 1:
+                self.data_path.push_raw(self.data_path.read())
+                self._complete_instruction()
+            case _:
+                self._invalid_step()
 
-        if self.data_path.is_alu_binary_opcode(self._instr.opcode):
-            right = self.data_path.stack.pop()
-            left = self.data_path.stack.pop()
-            result = self.data_path.perform_alu(
-                opcode=self._instr.opcode,
-                left=left,
-                right=right,
-            )
-            self.data_path.stack.push(result)
+    def _execute_store(self) -> None:
+        match self._step:
+            case 0:
+                self.data_path.latch_ar(self._instr.operand)
+                self._advance_step()
+            case 1:
+                self.data_path.write(self.data_path.stack.tos)
+                self.data_path.pop_raw()
+                self._complete_instruction()
+            case _:
+                self._invalid_step()
 
-        if self.data_path.is_alu_unary_opcode(self._instr.opcode):
-            result = self.data_path.perform_alu(opcode=self._instr.opcode, left=self.data_path.stack.pop())
-            self.data_path.stack.push(result)
+    def _execute_loadi(self) -> None:
+        match self._step:
+            case 0:
+                self.data_path.latch_ar(self.data_path.stack.tos)
+                self.data_path.pop_raw()
+                self._advance_step()
+            case 1:
+                self.data_path.push(self.data_path.read())
+                self._complete_instruction()
+            case _:
+                self._invalid_step()
 
-        self._state = State.START
+    def _execute_storei(self) -> None:
+        match self._step:
+            case 0:
+                self.data_path.latch_ar(self.data_path.stack.tos)
+                self.data_path.pop_raw()
+                self._advance_step()
+            case 2:
+                self.data_path.write(self.data_path.stack.tos)
+                self.data_path.pop_raw()
+                self._advance_step()
+            case _:
+                self._invalid_step()
 
-    def execute_interrupt(self) -> None:
-        self._return_stack.push(int(self.data_path.flags))
-        self._return_stack.push(self._pc)
-        self._program_state &= ~ProgramState.IE
-        self._program_state &= ~ProgramState.IRQ
-        self._pc = self._vector_table[self._pending_vector]
-        self._pending_vector = None
-        self._state = State.START
+    def _execute_rti(self) -> None:
+        match self._step:
+            case 0:
+                self.latch_pc(PCMux.R_STACK)
+                self._advance_step()
+            case 1:
+                self.data_path.flags = self._return_stack.pop()
+                self._advance_step()
+            case 2:
+                self._program_state |= ProgramState.IE
+                self._complete_instruction()
+            case _:
+                self._invalid_step()
+
+    def _execute_loop(self) -> None:
+        cnt = self._return_stack.pop() - 1
+        if cnt != 0:
+            self._return_stack.push(cnt)
+            self.latch_pc(PCMux.ADDRESS)
+
+    def _swap_data_stack_top(self) -> None:
+        stack = self.data_path.stack
+        tos_idx = stack.sp - 1
+        nos_idx = stack.sp - 2
+        stack.stack[tos_idx], stack.stack[nos_idx] = stack.stack[nos_idx], stack.stack[tos_idx]
+        self.data_path.flags = Flag.nz(stack.tos)
 
     def execute_branch(self, condition: bool) -> None:
-        if not condition:
-            return
+        if condition:
+            self.latch_pc(PCMux.ADDRESS)
 
-        self.latch_pc(PCMux.ADDRESS)
+    def _branch_condition(self, opcode: Opcode) -> bool:
+        flags = self.data_path.flags
+        match opcode:
+            case Opcode.JMP:
+                return True
+            case Opcode.JZ:
+                return flags.has(Flag.Z)
+            case Opcode.JNZ:
+                return not flags.has(Flag.Z)
+            case Opcode.JPL:
+                return not flags.has(Flag.N)
+            case Opcode.JMI:
+                return flags.has(Flag.N)
+            case Opcode.JGE:
+                return flags.has(Flag.N) == flags.has(Flag.V)
+            case Opcode.JL:
+                return flags.has(Flag.N) != flags.has(Flag.V)
+            case Opcode.JG:
+                return not flags.has(Flag.Z) and flags.has(Flag.N) == flags.has(Flag.V)
+            case Opcode.JLE:
+                return flags.has(Flag.Z) or flags.has(Flag.N) != flags.has(Flag.V)
+            case Opcode.JC:
+                return flags.has(Flag.C)
+            case Opcode.JNC:
+                return not flags.has(Flag.C)
+            case Opcode.JV:
+                return flags.has(Flag.V)
+            case Opcode.JNV:
+                return not flags.has(Flag.V)
+            case _:
+                msg = f"{opcode.name} is not a branch opcode"
+                raise ValueError(msg)
 
-    def run(
-        self,
-        limit: int | None = None,
-        on_tick: "Callable[[ControlUnit], None] | None" = None,
-    ) -> None:
-        while self._state is not State.HALT:
-            if limit is not None and self._tick >= limit:
-                logger.warning("Tick limit %d reached, halting", limit)
-                return
-            self.tick()
-            if on_tick is not None:
-                on_tick(self)
+    def _apply_state(self, state: State) -> None:
+        self._state = state
+        self._step = 0
+
+    def _advance_step(self) -> None:
+        self._step += 1
+
+    def _complete_instruction(self) -> None:
+        self._apply_state(State.DONE)
+
+    def _invalid_step(self) -> Never:
+        msg = f"Invalid {self._state.name} step {self._step} for {self._instr.opcode.name}"
+        raise RuntimeError(msg)
+
+
+_BRANCH_OPCODES = {
+    Opcode.JMP,
+    Opcode.JZ,
+    Opcode.JNZ,
+    Opcode.JPL,
+    Opcode.JMI,
+    Opcode.JGE,
+    Opcode.JL,
+    Opcode.JG,
+    Opcode.JLE,
+    Opcode.JC,
+    Opcode.JNC,
+    Opcode.JV,
+    Opcode.JNV,
+}
+
+_ONE_CYCLE_OPCODES = {
+    Opcode.NOP,
+    Opcode.PUSH,
+    Opcode.DUP,
+    Opcode.DROP,
+    Opcode.SWAP,
+    Opcode.OVER,
+    Opcode.RET,
+    Opcode.LOOP,
+    Opcode.EI,
+    Opcode.DI,
+    Opcode.ADD,
+    Opcode.SUB,
+    Opcode.MUL,
+    Opcode.DIV,
+    Opcode.CMP,
+    Opcode.INC,
+    Opcode.DEC,
+    Opcode.NEG,
+    Opcode.AND,
+    Opcode.OR,
+    Opcode.XOR,
+    Opcode.NOT,
+    Opcode.SHL,
+    Opcode.SHR,
+    *_BRANCH_OPCODES,
+}

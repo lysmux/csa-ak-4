@@ -21,7 +21,6 @@ MAX_TRACE: dict[str, int] = {
     "cat":               60,
     "hello_user_name":   80,
     "sort":              100,
-    "double_precision":  200,
 }
 
 _yaml_files = sorted(GOLDEN_DIR.glob("*.yaml"))

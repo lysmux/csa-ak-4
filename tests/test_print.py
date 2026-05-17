@@ -5,6 +5,7 @@ from app.simulation.control_unit import ControlUnit
 from app.simulation.data_path import DataPath
 from app.simulation.io import Device, Output
 from app.simulation.memory import Memory
+from app.simulation.runner import run_control_unit
 from app.simulation.stack import Stack
 from app.translator.analyzer import Analyzer
 from app.translator.codegen import CodeGen
@@ -14,7 +15,10 @@ from app.translator.parser import Parser
 OUT_ADDR = 0x222
 
 
-def _output_devices(address: int = OUT_ADDR, format: Literal["string", "raw"] = "string") -> dict[str, OutputDeviceConfig]:
+def _output_devices(
+    address: int = OUT_ADDR,
+    format: Literal["string", "raw"] = "string",
+) -> dict[str, OutputDeviceConfig]:
     return {"default": OutputDeviceConfig(address=address, format=format, default=True)}
 
 
@@ -38,7 +42,7 @@ def _run(src: str, format: Literal["string", "raw"] = "string", limit: int = 1_0
         return_stack=Stack(2000),
         vector_table=dict(program.interrupt_handlers),
     )
-    cu.run(limit=limit)
+    run_control_unit(cu, limit=limit)
     return output
 
 
@@ -107,7 +111,7 @@ def test_print_with_output_label():
         return_stack=Stack(2000),
         vector_table=dict(program.interrupt_handlers),
     )
-    cu.run(limit=1_000_000)
+    run_control_unit(cu, limit=1_000_000)
 
     assert default_out.as_string() == "D"
     assert err_output.as_string() == "E"

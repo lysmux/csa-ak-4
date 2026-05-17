@@ -295,21 +295,6 @@ def test_print_invalid_type_array():
     has_error("var arr: int[3]; print(arr);", "must be indexed with")
 
 
-def test_addc_ok():
-    ok("var a: int = 1; var b: int = 2; var c: int = addc(a, b);")
-
-
-def test_addc_wrong_arity():
-    has_error("var c: int = addc(1);", "expects 2 arg(s)")
-
-
-def test_addc_non_numeric():
-    has_error(
-        "var a: bool = true; var b: int = 0; var c: int = addc(a, b);",
-        "expected 'int', got 'bool'",
-    )
-
-
 def test_read_returns_int():
     ok("""
     interrupt 0 h() {

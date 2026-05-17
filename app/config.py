@@ -67,19 +67,13 @@ class IOConfig(BaseModel):
         used: dict[int, str] = {}
         for name, cfg in self.outputs.items():
             if cfg.address in used:
-                msg = (
-                    f"output {name!r} address {cfg.address:#x} collides with "
-                    f"{used[cfg.address]!r}"
-                )
+                msg = f"output {name!r} address {cfg.address:#x} collides with {used[cfg.address]!r}"
                 raise ValueError(msg)
             used[cfg.address] = f"output {name!r}"
 
         for name, cfg in self.inputs.items():
             if cfg.address in used:
-                msg = (
-                    f"input {name!r} address {cfg.address:#x} collides with "
-                    f"{used[cfg.address]!r}"
-                )
+                msg = f"input {name!r} address {cfg.address:#x} collides with {used[cfg.address]!r}"
                 raise ValueError(msg)
             used[cfg.address] = f"input {name!r}"
         return self

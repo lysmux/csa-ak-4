@@ -87,7 +87,7 @@ class Parser:
             msg = f"Expected {expected.name}, got EOF"
             raise ParseError(msg)
         if tok.type != expected:
-            msg = f"Expected {expected.name!r}, got {tok.type.name!r} {tok.value!r} at line {tok.line}, column {tok.column}"
+            msg = f"Expected {expected.name!r}, got {tok.type.name!r} at line {tok.line}, column {tok.column}"
             raise ParseError(msg)
 
         return self.advance()
