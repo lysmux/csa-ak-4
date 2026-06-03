@@ -10,4 +10,20 @@ class PCMux(IntEnum):
 
 class RStackMux(IntEnum):
     PC = auto()
+    TOS = auto()
+    FLAGS = auto()
     ALU = auto()
+
+
+class ARMux(IntEnum):
+    IR_OPERAND = auto()
+    TOS = auto()
+
+
+class DStackMux(IntEnum):
+    IR_OPERAND = auto()
+    TOS = auto()
+    NOS = auto()
+    ALU = auto()
+    MEMORY = auto()
+    R_STACK = auto()

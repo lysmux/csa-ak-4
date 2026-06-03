@@ -7,7 +7,7 @@ from app.isa.opcode import Opcode
 from app.isa.state import State
 from app.simulation.data_path import DataPath
 from app.simulation.memory import Memory
-from app.simulation.mux import PCMux, RStackMux
+from app.simulation.mux import ARMux, DStackMux, PCMux, RStackMux
 from app.simulation.stack import Stack
 
 
@@ -110,12 +110,15 @@ class ControlUnit:
                 self._pc = self._return_stack.pop()
 
     def write_r_stack(self, mux: RStackMux) -> None:
-        value = 0
         match mux:
             case RStackMux.PC:
                 value = self._pc
+            case RStackMux.TOS:
+                value = self.data_path.stack.tos
+            case RStackMux.FLAGS:
+                value = int(self.data_path.flags)
             case RStackMux.ALU:
-                value = 0
+                value = self.data_path._alu_out
         self._return_stack.push(value)
 
     def tick(self) -> None:
@@ -153,15 +156,16 @@ class ControlUnit:
         self._ir = self._instr_memory.read(self._pc)
         self.latch_pc(PCMux.NEXT)
         self._instr = Instruction.from_binary(self._ir)
+        self.data_path.set_ir_operand(self._instr.operand)
         return State.EXECUTE
 
     def decode_interrupt_signals(self) -> None:
         match self._step:
             case 0:
-                self._return_stack.push(int(self.data_path.flags))
+                self.write_r_stack(RStackMux.FLAGS)
                 self._advance_step()
             case 1:
-                self._return_stack.push(self._pc)
+                self.write_r_stack(RStackMux.PC)
                 self._advance_step()
             case 2:
                 self._program_state &= ~ProgramState.IE
@@ -222,15 +226,15 @@ class ControlUnit:
 
         match opcode:
             case Opcode.PUSH:
-                self.data_path.push(self._instr.operand)
+                self.data_path.push(DStackMux.IR_OPERAND)
             case Opcode.DUP:
-                self.data_path.push(self.data_path.stack.tos)
+                self.data_path.push(DStackMux.TOS)
             case Opcode.DROP:
                 self.data_path.pop_raw()
             case Opcode.SWAP:
                 self._swap_data_stack_top()
             case Opcode.OVER:
-                self.data_path.push(self.data_path.stack.nos)
+                self.data_path.push(DStackMux.NOS)
             case Opcode.RET:
                 self.latch_pc(PCMux.R_STACK)
             case Opcode.LOOP:
@@ -244,11 +248,11 @@ class ControlUnit:
             case _ if self.data_path.is_alu_binary_opcode(opcode):
                 right = self.data_path.pop_raw()
                 left = self.data_path.pop_raw()
-                result = self.data_path.perform_alu(opcode=opcode, left=left, right=right)
-                self.data_path.push_raw(result)
+                self.data_path.perform_alu(opcode=opcode, left=left, right=right)
+                self.data_path.push_raw(DStackMux.ALU)
             case _ if self.data_path.is_alu_unary_opcode(opcode):
-                result = self.data_path.perform_alu(opcode=opcode, left=self.data_path.pop_raw())
-                self.data_path.push_raw(result)
+                self.data_path.perform_alu(opcode=opcode, left=self.data_path.pop_raw())
+                self.data_path.push_raw(DStackMux.ALU)
             case _:
                 msg = f"Unsupported one-cycle opcode: {opcode.name}"
                 raise NotImplementedError(msg)
@@ -267,7 +271,7 @@ class ControlUnit:
     def _execute_pshr(self) -> None:
         match self._step:
             case 0:
-                self._return_stack.push(self.data_path.stack.tos)
+                self.write_r_stack(RStackMux.TOS)
                 self.data_path.pop()
                 self._complete_instruction()
             case _:
@@ -276,7 +280,8 @@ class ControlUnit:
     def _execute_popr(self) -> None:
         match self._step:
             case 0:
-                self.data_path.push(self._return_stack.tos)
+                self.data_path.set_r_top(self._return_stack.tos)
+                self.data_path.push(DStackMux.R_STACK)
                 self._return_stack.pop()
                 self._complete_instruction()
             case _:
@@ -285,10 +290,11 @@ class ControlUnit:
     def _execute_load(self) -> None:
         match self._step:
             case 0:
-                self.data_path.latch_ar(self._instr.operand)
+                self.data_path.latch_ar(ARMux.IR_OPERAND)
                 self._advance_step()
             case 1:
-                self.data_path.push_raw(self.data_path.read())
+                self.data_path.read()
+                self.data_path.push_raw(DStackMux.MEMORY)
                 self._complete_instruction()
             case _:
                 self._invalid_step()
@@ -296,7 +302,7 @@ class ControlUnit:
     def _execute_store(self) -> None:
         match self._step:
             case 0:
-                self.data_path.latch_ar(self._instr.operand)
+                self.data_path.latch_ar(ARMux.IR_OPERAND)
                 self._advance_step()
             case 1:
                 self.data_path.write(self.data_path.stack.tos)
@@ -308,11 +314,12 @@ class ControlUnit:
     def _execute_loadi(self) -> None:
         match self._step:
             case 0:
-                self.data_path.latch_ar(self.data_path.stack.tos)
+                self.data_path.latch_ar(ARMux.TOS)
                 self.data_path.pop_raw()
                 self._advance_step()
             case 1:
-                self.data_path.push(self.data_path.read())
+                self.data_path.read()
+                self.data_path.push(DStackMux.MEMORY)
                 self._complete_instruction()
             case _:
                 self._invalid_step()
@@ -320,7 +327,7 @@ class ControlUnit:
     def _execute_storei(self) -> None:
         match self._step:
             case 0:
-                self.data_path.latch_ar(self.data_path.stack.tos)
+                self.data_path.latch_ar(ARMux.TOS)
                 self.data_path.pop_raw()
                 self._advance_step()
             case 1:
@@ -345,9 +352,10 @@ class ControlUnit:
                 self._invalid_step()
 
     def _execute_loop(self) -> None:
-        cnt = self._return_stack.pop() - 1
+        popped = self._return_stack.pop()
+        cnt = self.data_path.perform_alu(Opcode.DEC, popped)
         if cnt != 0:
-            self._return_stack.push(cnt)
+            self.write_r_stack(RStackMux.ALU)
             self.latch_pc(PCMux.ADDRESS)
 
     def _swap_data_stack_top(self) -> None:
