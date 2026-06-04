@@ -34,6 +34,7 @@ from app.translator.nodes import (
 
 class Type(StrEnum):
     INT = "int"
+    LONG = "long"
     BOOL = "bool"
     STRING = "string"
     ARRAY = "array"
@@ -43,13 +44,13 @@ class Type(StrEnum):
     INPUT_DEVICE = "input_device"
 
 
-NUMERIC = {Type.INT}
+NUMERIC = {Type.INT, Type.LONG}
 ARITH_OPS = {Op.PLUS, Op.MINUS, Op.STAR, Op.SLASH}
 CMP_OPS = {Op.EQUAL, Op.NOT_EQUAL, Op.LESS_THAN, Op.GREATER_THAN, Op.LESS_THAN_OR_EQUAL, Op.GREATER_THAN_OR_EQUAL}
 LOGIC_OPS = {Op.AND, Op.OR, Op.XOR}
 INCR_OPS = {Op.INCREMENT, Op.DECREMENT}
 
-PRINTABLE = {Type.STRING, Type.INT, Type.BOOL}
+PRINTABLE = {Type.STRING, Type.INT, Type.LONG, Type.BOOL}
 
 
 @dataclass(frozen=True)
@@ -351,6 +352,8 @@ class Analyzer:
     def _check_compat(self, declared: Type, actual: Type | None, label: str) -> None:
         if actual is None or declared == actual:
             return
+        if declared == Type.LONG and actual == Type.INT:
+            return  # implicit widening int -> long
         self.error(f"type mismatch for {label}: expected '{declared}', got '{actual}'")
 
     def _infer_binary(self, op: str, ltype: Type | None, rtype: Type | None) -> Type | None:
@@ -358,6 +361,8 @@ class Analyzer:
             for t, side in ((ltype, "left"), (rtype, "right")):
                 if t is not None and t not in NUMERIC:
                     self.error(f"'{op}' requires numeric operands, got '{t}' on {side}")
+            if Type.LONG in (ltype, rtype):
+                return Type.LONG
             return ltype or rtype
 
         if op in CMP_OPS:

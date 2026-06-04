@@ -76,6 +76,7 @@ KEYWORDS: TokenTypeMap = {
     "return": TokenType.RETURN,
     "interrupt": TokenType.INTERRUPT,
     "int": TokenType.TYPE,
+    "long": TokenType.TYPE,
     "bool": TokenType.TYPE,
     "string": TokenType.TYPE,
 }

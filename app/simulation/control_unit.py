@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Never
 
+from app.isa.consts import SIGN_BIT, WORD_MASK
 from app.isa.flag import Flag, ProgramState
 from app.isa.instruction import Instruction
 from app.isa.opcode import Opcode
@@ -268,6 +269,10 @@ class ControlUnit:
                 self._program_state &= ~ProgramState.IE
             case Opcode.CMP:
                 self.data_path.cmp()
+            case Opcode.I2L:
+                # Widen int->long: push the sign-extension high word above TOS (lo).
+                hi = WORD_MASK if self.data_path.stack.tos & SIGN_BIT else 0
+                stack_push(self.data_path.stack, hi)
             case _ if self.data_path.is_alu_unary_opcode(opcode):
                 # ALU reads TOS directly and writes the result back in place — no memory.
                 self.data_path.stack.tos = self.data_path.perform_alu(
@@ -640,6 +645,7 @@ _ONE_CYCLE_OPCODES = {
     Opcode.EI,
     Opcode.DI,
     Opcode.CMP,
+    Opcode.I2L,
     Opcode.INC,
     Opcode.DEC,
     Opcode.NEG,
