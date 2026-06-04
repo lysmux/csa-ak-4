@@ -1,5 +1,6 @@
 from app.isa.instruction import Instruction
 from app.isa.opcode import Opcode
+
 from tests.shared import run_simulation
 
 
@@ -39,28 +40,28 @@ def test_factorial():
     memory = {0x0: 8}
     instructions = [
         # main
-        Instruction(Opcode.LOAD, 0x0),      # 0
-        Instruction(Opcode.CALL, 4),         # 1
-        Instruction(Opcode.STORE, 0x2),      # 2
-        Instruction(Opcode.HALT),            # 3
+        Instruction(Opcode.LOAD, 0x0),  # 0
+        Instruction(Opcode.CALL, 4),  # 1
+        Instruction(Opcode.STORE, 0x2),  # 2
+        Instruction(Opcode.HALT),  # 3
         # fac(n)
-        Instruction(Opcode.PUSH, 1),         # 4
-        Instruction(Opcode.CMP),             # 5  FLAGS = n-1
-        Instruction(Opcode.JLE, 15),         # 6  n <= 1 → base
+        Instruction(Opcode.PUSH, 1),  # 4
+        Instruction(Opcode.CMP),  # 5  FLAGS = n-1
+        Instruction(Opcode.JLE, 15),  # 6  n <= 1 → base
         # recursive branch
-        Instruction(Opcode.DROP),            # 7
-        Instruction(Opcode.DUP),             # 8
-        Instruction(Opcode.PSHR),            # 9
-        Instruction(Opcode.DEC),             # 10
-        Instruction(Opcode.CALL, 4),         # 11
-        Instruction(Opcode.POPR),            # 12
-        Instruction(Opcode.MUL),             # 13
-        Instruction(Opcode.RET),             # 14
+        Instruction(Opcode.DROP),  # 7
+        Instruction(Opcode.DUP),  # 8
+        Instruction(Opcode.PSHR),  # 9
+        Instruction(Opcode.DEC),  # 10
+        Instruction(Opcode.CALL, 4),  # 11
+        Instruction(Opcode.POPR),  # 12
+        Instruction(Opcode.MUL),  # 13
+        Instruction(Opcode.RET),  # 14
         # base case
-        Instruction(Opcode.DROP),            # 15
-        Instruction(Opcode.DROP),            # 16
-        Instruction(Opcode.PUSH, 1),         # 17
-        Instruction(Opcode.RET),             # 18
+        Instruction(Opcode.DROP),  # 15
+        Instruction(Opcode.DROP),  # 16
+        Instruction(Opcode.PUSH, 1),  # 17
+        Instruction(Opcode.RET),  # 18
     ]
 
     snapshot = run_simulation(instructions, memory)

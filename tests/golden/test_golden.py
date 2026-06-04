@@ -7,10 +7,12 @@
 Структура yaml:
   name, source, config, max_trace, expected_output, ast, machine_code, trace
 """
+
 from pathlib import Path
 
 import pytest
 import yaml
+
 from tests.golden.helpers import DEFAULT_MAX_TRACE, GOLDEN_DIR, run_and_snapshot
 
 _yaml_files = sorted(GOLDEN_DIR.glob("*.yaml"))
@@ -30,6 +32,4 @@ def test_golden(yaml_path: Path, request: pytest.FixtureRequest) -> None:
         yaml_path.write_text(snap_yaml, encoding="utf-8")
         return
 
-    assert snap_yaml == stored_text, (
-        f"[{name}] golden snapshot mismatch — run with --update-golden to regenerate"
-    )
+    assert snap_yaml == stored_text, f"[{name}] golden snapshot mismatch — run with --update-golden to regenerate"

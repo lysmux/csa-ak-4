@@ -72,6 +72,10 @@ class Parser:
         idx = self.pos + offset
         return self.tokens[idx] if idx < len(self.tokens) else None
 
+    def peek_type(self, offset: int = 0) -> TokenType | None:
+        tok = self.peek(offset)
+        return tok.type if tok is not None else None
+
     def advance(self) -> Token:
         tok = self.tokens[self.pos]
         self.pos += 1
@@ -113,9 +117,9 @@ class Parser:
                 return self.parse_if_stmt()
             case TokenType.WHILE:
                 return self.parse_while_stmt()
-            case TokenType.IDENT if self.peek(1) and self.peek(1).type == TokenType.ASSIGN:
+            case TokenType.IDENT if self.peek_type(1) == TokenType.ASSIGN:
                 return self.parse_assign_stmt()
-            case TokenType.IDENT if self.peek(1) and self.peek(1).type == TokenType.LBRACKET:
+            case TokenType.IDENT if self.peek_type(1) == TokenType.LBRACKET:
                 return self.parse_index_assign_stmt()
             case _:
                 return self.parse_expr_stmt()
@@ -136,7 +140,7 @@ class Parser:
         self.eat(TokenType.COLON)
         type_name = self.eat(TokenType.TYPE).value
 
-        if self.peek().type is TokenType.LBRACKET:
+        if self.peek_type() is TokenType.LBRACKET:
             self.advance()
             size = int(self.eat(TokenType.NUMBER).value)
             self.eat(TokenType.RBRACKET)
@@ -173,7 +177,7 @@ class Parser:
         self.eat(TokenType.RPAREN)
 
         return_type: str | None = None
-        if self.peek().type is TokenType.COLON:
+        if self.peek_type() is TokenType.COLON:
             self.advance()
             return_type = self.eat(TokenType.TYPE).value
         body = self.parse_block()
@@ -181,7 +185,7 @@ class Parser:
 
     def parse_param_list(self) -> list[tuple[str, str]]:
         params: list[tuple[str, str]] = []
-        if self.peek() and self.peek().type == TokenType.RPAREN:
+        if self.peek_type() == TokenType.RPAREN:
             return params
 
         while True:
@@ -189,7 +193,7 @@ class Parser:
             param_name = self.eat(TokenType.IDENT).value
             params.append((type_name, param_name))
 
-            if self.peek().type is not TokenType.COMMA:
+            if self.peek_type() is not TokenType.COMMA:
                 break
 
             self.advance()
@@ -207,7 +211,7 @@ class Parser:
 
     def parse_return_stmt(self) -> ReturnStmt:
         self.eat(TokenType.RETURN)
-        if self.peek() and self.peek().type != TokenType.SEMICOLON:
+        if self.peek_type() not in (None, TokenType.SEMICOLON):
             value = self.parse_expr()
             self.eat(TokenType.SEMICOLON)
             return ReturnStmt(value=value)
@@ -224,9 +228,9 @@ class Parser:
         then_block = self.parse_block()
 
         else_branch: IfStmt | Block | None = None
-        if self.peek().type is TokenType.ELSE:
+        if self.peek_type() is TokenType.ELSE:
             self.advance()
-            if self.peek() and self.peek().type == TokenType.IF:
+            if self.peek_type() == TokenType.IF:
                 else_branch = self.parse_if_stmt()
             else:
                 else_branch = self.parse_block()
@@ -248,7 +252,7 @@ class Parser:
     def parse_block(self) -> Block:
         self.eat(TokenType.LBRACE)
         body: list[Statement] = []
-        while not self.at_end() and self.peek().type != TokenType.RBRACE:
+        while not self.at_end() and self.peek_type() != TokenType.RBRACE:
             body.append(self.parse_statement())
         self.eat(TokenType.RBRACE)
         return Block(body=body)
@@ -259,8 +263,10 @@ class Parser:
             msg = "Unexpected end of input in expression"
             raise ParseError(msg)
 
+        left: Expr
         if tok.type in PREFIX_OPS:
             op = self.advance()
+            operand: Expr
             if op.type in (TokenType.INCREMENT, TokenType.DECREMENT):
                 operand = Ident(self.eat(TokenType.IDENT).value)
             else:
@@ -278,12 +284,12 @@ class Parser:
             self.advance()
         elif tok.type == TokenType.IDENT:
             name = self.advance().value
-            if self.peek() and self.peek().type == TokenType.LPAREN:
+            if self.peek_type() == TokenType.LPAREN:
                 self.advance()
                 args = self.parse_arg_list()
                 self.eat(TokenType.RPAREN)
                 left = Call(name=name, args=args)
-            elif self.peek() and self.peek().type == TokenType.LBRACKET:
+            elif self.peek_type() == TokenType.LBRACKET:
                 self.advance()
                 index = self.parse_expr()
                 self.eat(TokenType.RBRACKET)
@@ -321,12 +327,12 @@ class Parser:
 
     def parse_arg_list(self) -> list[Expr]:
         args: list[Expr] = []
-        if self.peek() and self.peek().type == TokenType.RPAREN:
+        if self.peek_type() == TokenType.RPAREN:
             return args
 
         while True:
             args.append(self.parse_expr())
-            if self.peek().type is not TokenType.COMMA:
+            if self.peek_type() is not TokenType.COMMA:
                 break
 
             self.advance()

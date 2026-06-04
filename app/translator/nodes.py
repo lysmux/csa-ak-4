@@ -5,6 +5,7 @@ import sys
 from abc import ABC
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import TextIO
 
 
 class Op(StrEnum):
@@ -179,19 +180,19 @@ type Statement = (
 type Expr = BinaryOp | UnaryOp | PostfixOp | Call | IndexExpr | Ident | Number | String | Bool
 
 
-def print_ast(node: ASTNode, *, file: sys.IO[str] = sys.stdout) -> None:
+def print_ast(node: ASTNode, *, file: TextIO = sys.stdout) -> None:
     lines: list[str] = []
     _ast_collect(node, "", "", lines)
     print("\n".join(lines), file=file)
 
 
-def _ast_collect(node: ASTNode, prefix: str, child_prefix: str, lines: list[str]) -> None:
+def _ast_collect(node: object, prefix: str, child_prefix: str, lines: list[str]) -> None:
     if not _dc.is_dataclass(node) or isinstance(node, type):
         lines.append(prefix + repr(node))
         return
 
-    scalars: list[tuple[str, ASTNode]] = []
-    children: list[tuple[str, ASTNode]] = []
+    scalars: list[tuple[str, object]] = []
+    children: list[tuple[str, object]] = []
     for f in _dc.fields(node):
         v = getattr(node, f.name)
         if (isinstance(v, list) and v) or (_dc.is_dataclass(v) and not isinstance(v, type)):

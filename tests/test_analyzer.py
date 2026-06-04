@@ -19,9 +19,10 @@ def analyze_with_outputs(source: str, outputs: set[str]) -> None:
 def error(source: str) -> str | None:
     try:
         analyze(source)
-        return None
     except SemanticError as e:
         return str(e)
+    else:
+        return None
 
 
 def ok(source: str) -> None:
@@ -375,27 +376,27 @@ def test_deeply_nested_scope():
 
 
 @pytest.mark.parametrize("op", ["+", "-", "*", "/"])
-def test_arithmetic_all_ops_ok(op):
+def test_arithmetic_all_ops_ok(op: str):
     ok(f"const a: int = 1; const b: int = 2; var c: int = a {op} b;")
 
 
 @pytest.mark.parametrize("op", ["+", "-", "*", "/"])
-def test_arithmetic_all_ops_on_bool_err(op):
+def test_arithmetic_all_ops_on_bool_err(op: str):
     has_error(f"const a: bool = true; var b: int = a {op} 1;", "requires numeric operands")
 
 
 @pytest.mark.parametrize("op", ["==", "!=", "<", ">", "<=", ">="])
-def test_cmp_all_ops_ok(op):
+def test_cmp_all_ops_ok(op: str):
     ok(f"const a: int = 1; const b: int = 2; var c: bool = a {op} b;")
 
 
 @pytest.mark.parametrize("op", ["&&", "||", "^"])
-def test_logic_all_ops_ok(op):
+def test_logic_all_ops_ok(op: str):
     ok(f"const a: bool = true; const b: bool = false; var c: bool = a {op} b;")
 
 
 @pytest.mark.parametrize("op", ["&&", "||", "^"])
-def test_logic_all_ops_on_int_err(op):
+def test_logic_all_ops_on_int_err(op: str):
     has_error(f"const a: int = 1; const b: bool = true; var c: bool = a {op} b;", "requires bool operands")
 
 

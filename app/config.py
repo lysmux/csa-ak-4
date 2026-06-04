@@ -71,11 +71,11 @@ class IOConfig(BaseModel):
                 raise ValueError(msg)
             used[cfg.address] = f"output {name!r}"
 
-        for name, cfg in self.inputs.items():
-            if cfg.address in used:
-                msg = f"input {name!r} address {cfg.address:#x} collides with {used[cfg.address]!r}"
+        for name, in_cfg in self.inputs.items():
+            if in_cfg.address in used:
+                msg = f"input {name!r} address {in_cfg.address:#x} collides with {used[in_cfg.address]!r}"
                 raise ValueError(msg)
-            used[cfg.address] = f"input {name!r}"
+            used[in_cfg.address] = f"input {name!r}"
         return self
 
 

@@ -25,9 +25,9 @@ def format_validation_error(e: ValidationError) -> str:
 
 def error_wrap[**P, R](fn: Callable[P, R]) -> Callable[P, R]:
     @functools.wraps(fn)
-    def wrapper(*args: P.args, **kwargs: P.kwargs) -> None:
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         try:
-            fn(*args, **kwargs)
+            return fn(*args, **kwargs)
         except ValidationError as e:
             error("Configuration error:", format_validation_error(e))
         except Exception as e:

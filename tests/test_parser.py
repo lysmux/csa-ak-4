@@ -11,6 +11,7 @@ from app.translator.nodes import (
     Ident,
     IfStmt,
     Number,
+    Op,
     PostfixOp,
     Program,
     String,
@@ -38,33 +39,27 @@ def expr(source: str):
 # Declarations
 # ---------------------------------------------------------------------------
 
+
 def test_const_decl():
-    assert stmt("const x: int = 42;") == ConstDecl(
-        name="x", type_name="int", value=Number(42)
-    )
+    assert stmt("const x: int = 42;") == ConstDecl(name="x", type_name="int", value=Number(42))
 
 
 def test_var_decl():
-    assert stmt("var y: int = 0;") == VarDecl(
-        name="y", type_name="int", value=Number(0)
-    )
+    assert stmt("var y: int = 0;") == VarDecl(name="y", type_name="int", value=Number(0))
 
 
 def test_const_decl_string_value():
-    assert stmt('const msg: string = "hi";') == ConstDecl(
-        name="msg", type_name="string", value=String('hi')
-    )
+    assert stmt('const msg: string = "hi";') == ConstDecl(name="msg", type_name="string", value=String("hi"))
 
 
 def test_var_decl_bool_value():
-    assert stmt("var flag: bool = true;") == VarDecl(
-        name="flag", type_name="bool", value=Bool(True)
-    )
+    assert stmt("var flag: bool = true;") == VarDecl(name="flag", type_name="bool", value=Bool(True))
 
 
 # ---------------------------------------------------------------------------
 # Assignment
 # ---------------------------------------------------------------------------
+
 
 def test_assign_stmt():
     assert stmt("x = 1;") == AssignStmt(name="x", value=Number(1))
@@ -81,12 +76,13 @@ def test_assign_expr():
 # Expressions — literals & atoms
 # ---------------------------------------------------------------------------
 
+
 def test_number():
     assert expr("42") == Number(42)
 
 
 def test_string():
-    assert expr('"hello"') == String('hello')
+    assert expr('"hello"') == String("hello")
 
 
 def test_true():
@@ -108,6 +104,7 @@ def test_grouped():
 # ---------------------------------------------------------------------------
 # Expressions — binary operators & precedence
 # ---------------------------------------------------------------------------
+
 
 def test_addition():
     assert expr("a + b") == BinaryOp("PLUS", Ident("a"), Ident("b"))
@@ -176,21 +173,32 @@ def test_parens_override_precedence():
     )
 
 
-@pytest.mark.parametrize("op,name", [
-    ("==", "EQUAL"), ("!=", "NOT_EQUAL"),
-    ("<",  "LESS_THAN"), (">",  "GREATER_THAN"),
-    ("<=", "LESS_THAN_OR_EQUAL"), (">=", "GREATER_THAN_OR_EQUAL"),
-    ("&&", "AND"), ("||", "OR"), ("^", "XOR"),
-    ("+",  "PLUS"), ("-",  "MINUS"),
-    ("*",  "STAR"), ("/",  "SLASH"),
-])
-def test_binary_operators(op, name):
+@pytest.mark.parametrize(
+    ("op", "name"),
+    [
+        ("==", Op.EQUAL),
+        ("!=", Op.NOT_EQUAL),
+        ("<", Op.LESS_THAN),
+        (">", Op.GREATER_THAN),
+        ("<=", Op.LESS_THAN_OR_EQUAL),
+        (">=", Op.GREATER_THAN_OR_EQUAL),
+        ("&&", Op.AND),
+        ("||", Op.OR),
+        ("^", Op.XOR),
+        ("+", Op.PLUS),
+        ("-", Op.MINUS),
+        ("*", Op.STAR),
+        ("/", Op.SLASH),
+    ],
+)
+def test_binary_operators(op: str, name: Op):
     assert expr(f"a {op} b") == BinaryOp(name, Ident("a"), Ident("b"))
 
 
 # ---------------------------------------------------------------------------
 # Expressions — unary / postfix
 # ---------------------------------------------------------------------------
+
 
 def test_prefix_not():
     assert expr("!a") == UnaryOp("NOT", Ident("a"))
@@ -214,9 +222,7 @@ def test_postfix_decrement():
 
 def test_postfix_binds_tighter_than_mul():
     # x++ * y  →  (x++) * y
-    assert expr("x++ * y") == BinaryOp(
-        "STAR", PostfixOp("INCREMENT", Ident("x")), Ident("y")
-    )
+    assert expr("x++ * y") == BinaryOp("STAR", PostfixOp("INCREMENT", Ident("x")), Ident("y"))
 
 
 def test_not_binds_tighter_than_and():
@@ -228,12 +234,13 @@ def test_not_binds_tighter_than_and():
 # Expressions — function calls
 # ---------------------------------------------------------------------------
 
+
 def test_call_no_args():
     assert expr("f()") == Call("f", [])
 
 
 def test_call_one_arg():
-    assert expr('print("hi")') == Call("print", [String('hi')])
+    assert expr('print("hi")') == Call("print", [String("hi")])
 
 
 def test_call_multiple_args():
@@ -248,10 +255,9 @@ def test_call_expr_arg():
 # Control flow
 # ---------------------------------------------------------------------------
 
+
 def test_while():
-    assert stmt("while (x) {}") == WhileStmt(
-        condition=Ident("x"), body=Block([])
-    )
+    assert stmt("while (x) {}") == WhileStmt(condition=Ident("x"), body=Block([]))
 
 
 def test_while_complex_condition():
@@ -281,6 +287,7 @@ def test_if_else_if():
     assert isinstance(node.else_branch, IfStmt)
     assert node.else_branch.condition == Ident("b")
 
+
 def test_if_body():
     node = stmt("if (x) { y = 1; }")
     assert node.then_block == Block([AssignStmt("y", Number(1))])
@@ -290,16 +297,13 @@ def test_if_body():
 # Function declarations
 # ---------------------------------------------------------------------------
 
+
 def test_fun_no_params():
-    assert stmt("fun main() {}") == FunDecl(
-        name="main", params=[], body=Block([])
-    )
+    assert stmt("fun main() {}") == FunDecl(name="main", params=[], body=Block([]))
 
 
 def test_fun_one_param():
-    assert stmt("fun f(int x) {}") == FunDecl(
-        name="f", params=[("int", "x")], body=Block([])
-    )
+    assert stmt("fun f(int x) {}") == FunDecl(name="f", params=[("int", "x")], body=Block([]))
 
 
 def test_fun_multiple_params():
@@ -319,6 +323,7 @@ def test_fun_with_body():
 # Program-level
 # ---------------------------------------------------------------------------
 
+
 def test_multiple_statements():
     program = parse("const a: int = 1;\nvar b: int = 2;")
     assert len(program.body) == 2
@@ -330,10 +335,10 @@ def test_empty_program():
     assert parse("") == Program([])
 
 
-
 # ---------------------------------------------------------------------------
 # Errors
 # ---------------------------------------------------------------------------
+
 
 def test_missing_semicolon_in_const():
     with pytest.raises(ParseError):

@@ -122,7 +122,10 @@ class Analyzer:
         self._scope = Scope(self._scope)
 
     def _pop(self) -> None:
-        self._scope = self._scope.parent
+        parent = self._scope.parent
+        if parent is None:
+            self.error("cannot pop the global scope")
+        self._scope = parent
 
     def _define(self, sym: Symbol) -> None:
         existing = self._scope.define(sym)
@@ -182,10 +185,10 @@ class Analyzer:
             case InterruptDecl(vector=_, name=name, body=body):
                 self._define(Symbol(name, Type.INTERRUPT, mutable=False))
                 self._push()
-                prev = self._in_interrupt_handler
+                prev_in_handler = self._in_interrupt_handler
                 self._in_interrupt_handler = True
                 self._visit(body)
-                self._in_interrupt_handler = prev
+                self._in_interrupt_handler = prev_in_handler
                 self._pop()
 
             case AssignStmt(name=name, value=value):
@@ -279,9 +282,11 @@ class Analyzer:
                                 payload = args[1:]
 
                         for i, arg in enumerate(payload):
-                            t = self._visit(arg)
-                            if t is not None and t not in PRINTABLE:
-                                self.error(f"argument {i + 1}: invalid type '{t}', expected one of {sorted(PRINTABLE)}")
+                            arg_type = self._visit(arg)
+                            if arg_type is not None and arg_type not in PRINTABLE:
+                                self.error(
+                                    f"argument {i + 1}: invalid type '{arg_type}', expected one of {sorted(PRINTABLE)}"
+                                )
 
                     elif name == "read":
                         if len(args) == 0:
@@ -298,9 +303,9 @@ class Analyzer:
                         if len(args) != len(spec.params):
                             self.error(f"'{name}' expects {len(spec.params)} arg(s), got {len(args)}")
                         for i, (arg, expected_type) in enumerate(zip(args, spec.params, strict=True)):
-                            t = self._visit(arg)
-                            if t is not None and t != expected_type:
-                                self.error(f"'{name}' argument {i + 1}: expected '{expected_type}', got '{t}'")
+                            arg_type = self._visit(arg)
+                            if arg_type is not None and arg_type != expected_type:
+                                self.error(f"'{name}' argument {i + 1}: expected '{expected_type}', got '{arg_type}'")
 
                     return spec.return_type
 

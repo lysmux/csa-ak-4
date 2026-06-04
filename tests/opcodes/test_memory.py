@@ -15,6 +15,7 @@ def test_load():
 
     assert snapshot.tos == 0x1
 
+
 def test_store():
     memory = {}
     instructions = [

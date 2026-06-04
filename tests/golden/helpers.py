@@ -19,7 +19,7 @@ from app.simulation.stack import Stack
 from app.translator.analyzer import Analyzer
 from app.translator.codegen import CodeGen, CompiledProgram
 from app.translator.lexer import Lexer
-from app.translator.nodes import print_ast
+from app.translator.nodes import Program, print_ast
 from app.translator.parser import Parser
 
 GOLDEN_DIR = Path(__file__).parent
@@ -54,7 +54,7 @@ def compile_source(
     src: str,
     output_devices: dict[str, OutputDeviceConfig],
     input_devices: dict[str, InputDeviceConfig] | None = None,
-) -> tuple[object, CompiledProgram]:
+) -> tuple[Program, CompiledProgram]:
     tokens = Lexer(src).tokenize()
     ast = Parser(tokens).parse()
     Analyzer(
@@ -68,7 +68,7 @@ def compile_source(
     return ast, program
 
 
-def get_ast_dump(ast: object) -> str:
+def get_ast_dump(ast: Program) -> str:
     buf = io.StringIO()
     print_ast(ast, file=buf)
     return buf.getvalue()
@@ -129,14 +129,14 @@ def run_golden(
 def build_snapshot(
     name: str,
     source: str,
-    config_dict: dict,
+    config_dict: dict[str, object],
     max_trace: int,
     ast_dump: str,
     dbg: str,
     trace_lines: list[str],
     total_ticks: int,
     output: dict[str, str],
-) -> dict:
+) -> dict[str, object]:
     return {
         "name": name,
         "source": _lit(source),
@@ -154,7 +154,7 @@ def build_snapshot(
     }
 
 
-def dump_snapshot(snap: dict) -> str:
+def dump_snapshot(snap: dict[str, object]) -> str:
     return yaml.dump(
         snap,
         allow_unicode=True,
@@ -164,7 +164,7 @@ def dump_snapshot(snap: dict) -> str:
     )
 
 
-def run_and_snapshot(name: str, yaml_path: Path, max_trace: int) -> tuple[dict, str]:
+def run_and_snapshot(name: str, yaml_path: Path, max_trace: int) -> tuple[dict[str, object], str]:
     """Load source + config from yaml_path, compile, run, return (snap_dict, snap_yaml)."""
     stored = yaml.safe_load(yaml_path.read_text(encoding="utf-8"))
     source = stored["source"]

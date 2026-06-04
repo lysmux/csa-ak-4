@@ -26,7 +26,7 @@ line-length = 120
 target-version = "py312"
 show-fixes = true
 src = ["app", "tests"]
-exclude = ["tests"]
+extend-exclude = ["test.py"]
 
 [tool.ruff.lint]
 select = [
@@ -91,6 +91,18 @@ markers = [
     "golden: marks tests as golden",
 ]
 
+
+[tool.mypy]
+python_version = "3.12"
+files = ["app", "tests"]
+strict = true
+exclude = ['^test\.py$']
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = false
 
 [tool.pyright]
 files = ["src", "tests"]

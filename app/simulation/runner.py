@@ -43,8 +43,8 @@ def _build_io_devices(config: IOConfig) -> IODevices:
         outputs[name] = output
         io_map[cfg.address] = output
 
-    for cfg in config.inputs.values():
-        io_map[cfg.address] = Input(schedule=cfg.schedule, vector=cfg.vector)
+    for in_cfg in config.inputs.values():
+        io_map[in_cfg.address] = Input(schedule=in_cfg.schedule, vector=in_cfg.vector)
 
     return IODevices(outputs=outputs, io_map=io_map)
 

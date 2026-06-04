@@ -105,22 +105,14 @@ def test_long_compare_greater_false():
 
 
 def test_long_compare_equal():
-    snapshot = run_source(
-        _prog("var a: long = 8000000000;\nif (a == 8000000000) { r = 1; } else { r = 2; }")
-    )
+    snapshot = run_source(_prog("var a: long = 8000000000;\nif (a == 8000000000) { r = 1; } else { r = 2; }"))
     assert read_long(snapshot, 0) == 1
 
 
 def test_long_while_countdown():
     # Drive a while loop on a long counter down to zero.
     src = _prog(
-        "var a: long = 5000000000;\n"
-        "var n: long = 3;\n"
-        "while (n > 0) {\n"
-        "  a = a + 1000000000;\n"
-        "  n = n - 1;\n"
-        "}\n"
-        "r = a;"
+        "var a: long = 5000000000;\nvar n: long = 3;\nwhile (n > 0) {\n  a = a + 1000000000;\n  n = n - 1;\n}\nr = a;"
     )
     snapshot = run_source(src)
     assert read_long(snapshot, 0) == 8000000000

@@ -112,6 +112,7 @@ class ControlUnit:
                     msg = "Interrupt vector latch requested without pending vector"
                     raise RuntimeError(msg)
                 self._pc = self._vector_table[self._pending_vector]
+
     def write_r_stack(self, mux: RStackMux) -> None:
         match mux:
             case RStackMux.PC:

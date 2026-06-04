@@ -16,6 +16,7 @@ def test_push():
 
     assert snapshot.data_stack[0] == 0x123
 
+
 def test_dup():
     memory = {}
     instructions = [
@@ -28,6 +29,7 @@ def test_dup():
 
     assert snapshot.data_stack[0] == 0x123
     assert snapshot.data_stack[1] == 0x123
+
 
 def test_drop():
     memory = {}
@@ -42,6 +44,7 @@ def test_drop():
     assert snapshot.data_stack[0] == 0x123
     assert snapshot.data_stack[1] == 0
 
+
 def test_swap():
     memory = {}
     instructions = [
@@ -54,6 +57,7 @@ def test_swap():
     snapshot = run_simulation(instructions, memory)
     assert snapshot.data_stack[1] == 0x123
     assert snapshot.data_stack[0] == 0x456
+
 
 def test_over():
     memory = {}

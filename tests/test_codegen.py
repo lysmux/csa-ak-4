@@ -16,6 +16,7 @@ _EXAMPLE_SRC = Path("examples/example.cube")
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def compile_src(src: str) -> CompiledProgram:
     tokens = Lexer(src).tokenize()
     ast = Parser(tokens).parse()
@@ -34,6 +35,7 @@ def opcodes(src: str) -> list[Opcode]:
 # Invariants
 # ---------------------------------------------------------------------------
 
+
 def test_halt_always_last():
     for src in ["", "var x: int = 1;", "fun f() {}", "while (true) { var x: int = 1; }"]:
         assert instrs(src)[-1].opcode == Opcode.HALT
@@ -46,6 +48,7 @@ def test_empty_program():
 # ---------------------------------------------------------------------------
 # Literals — статическая инициализация в data[]
 # ---------------------------------------------------------------------------
+
 
 def test_number_static_init():
     # Значение известно → прямо в data, без PUSH/STORE
@@ -73,6 +76,7 @@ def test_string_push_zero():
 # ---------------------------------------------------------------------------
 # Variable allocation and addressing
 # ---------------------------------------------------------------------------
+
 
 def test_first_var_addr_zero():
     # var с литералом: data[0] = 1 (static), + PUSH 1; STORE 0 (runtime re-init)
@@ -116,17 +120,18 @@ def test_shadowing_allocates_new_addr():
 # Assignment
 # ---------------------------------------------------------------------------
 
+
 def test_assign_stores_to_correct_addr():
     # var x = 0 → PUSH 0; STORE 0; x = 7 → PUSH 7; STORE 0
     i = instrs("var x: int = 0; x = 7;")
-    push7_idx = next(j for j, instr in enumerate(i)
-                     if instr.opcode == Opcode.PUSH and instr.operand == 7)
+    push7_idx = next(j for j, instr in enumerate(i) if instr.opcode == Opcode.PUSH and instr.operand == 7)
     assert i[push7_idx + 1] == Instruction(Opcode.STORE, 0)
 
 
 # ---------------------------------------------------------------------------
 # ExprStmt — always drops result
 # ---------------------------------------------------------------------------
+
 
 def test_expr_stmt_drops():
     i = instrs("var x: int = 1; x + 2;")
@@ -138,23 +143,30 @@ def test_expr_stmt_drops():
 # Arithmetic binary operators
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize("op,expected_opcode", [
-    ("+", Opcode.ADD),
-    ("-", Opcode.SUB),
-    ("*", Opcode.MUL),
-    ("/", Opcode.DIV),
-])
-def test_arithmetic_ops(op, expected_opcode):
+
+@pytest.mark.parametrize(
+    ("op", "expected_opcode"),
+    [
+        ("+", Opcode.ADD),
+        ("-", Opcode.SUB),
+        ("*", Opcode.MUL),
+        ("/", Opcode.DIV),
+    ],
+)
+def test_arithmetic_ops(op: str, expected_opcode: Opcode):
     src = f"var a: int = 2; var b: int = 3; var c: int = a {op} b;"
     assert expected_opcode in opcodes(src)
 
 
-@pytest.mark.parametrize("op,expected_opcode", [
-    ("&&", Opcode.AND),
-    ("||", Opcode.OR),
-    ("^",  Opcode.XOR),
-])
-def test_logical_ops(op, expected_opcode):
+@pytest.mark.parametrize(
+    ("op", "expected_opcode"),
+    [
+        ("&&", Opcode.AND),
+        ("||", Opcode.OR),
+        ("^", Opcode.XOR),
+    ],
+)
+def test_logical_ops(op: str, expected_opcode: Opcode):
     # var операнды — не вычисляются статически → опкод в инструкциях
     src = f"var a: bool = true; var b: bool = false; var c: bool = a {op} b;"
     assert expected_opcode in opcodes(src)
@@ -165,23 +177,27 @@ def test_arithmetic_operand_order():
     i = instrs("var a: int = 5; var b: int = 3; var c: int = a - b;")
     sub_idx = next(j for j, x in enumerate(i) if x.opcode == Opcode.SUB)
     # The two LOADs must come before SUB
-    assert i[sub_idx - 2].opcode == Opcode.LOAD   # a
-    assert i[sub_idx - 1].opcode == Opcode.LOAD   # b
+    assert i[sub_idx - 2].opcode == Opcode.LOAD  # a
+    assert i[sub_idx - 1].opcode == Opcode.LOAD  # b
 
 
 # ---------------------------------------------------------------------------
 # Comparison operators
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize("op,jump", [
-    ("==", Opcode.JZ),
-    ("!=", Opcode.JNZ),
-    ("<",  Opcode.JL),
-    (">",  Opcode.JG),
-    ("<=", Opcode.JLE),
-    (">=", Opcode.JGE),
-])
-def test_comparison_uses_cmp_and_jump(op, jump):
+
+@pytest.mark.parametrize(
+    ("op", "jump"),
+    [
+        ("==", Opcode.JZ),
+        ("!=", Opcode.JNZ),
+        ("<", Opcode.JL),
+        (">", Opcode.JG),
+        ("<=", Opcode.JLE),
+        (">=", Opcode.JGE),
+    ],
+)
+def test_comparison_uses_cmp_and_jump(op: str, jump: Opcode):
     src = f"var a: int = 1; var b: int = 2; var c: bool = a {op} b;"
     ops = opcodes(src)
     assert Opcode.CMP in ops
@@ -201,6 +217,7 @@ def test_comparison_result_is_0_or_1():
 # Logical NOT
 # ---------------------------------------------------------------------------
 
+
 def test_not_uses_jz():
     # var операнд — NOT не вычисляется статически → JZ в инструкциях
     assert Opcode.JZ in opcodes("var x: bool = true; var y: bool = !x;")
@@ -217,6 +234,7 @@ def test_not_result_inverts():
 # ---------------------------------------------------------------------------
 # Prefix and postfix increment/decrement
 # ---------------------------------------------------------------------------
+
 
 def test_prefix_inc_sequence():
     i = instrs("var x: int = 0; ++x;")
@@ -258,6 +276,7 @@ def test_postfix_dec_sequence():
 # if / else
 # ---------------------------------------------------------------------------
 
+
 def test_if_contains_jz_and_jmp():
     ops = opcodes("var x: int = 0; if (true) { x = 1; }")
     assert Opcode.JZ in ops
@@ -269,13 +288,13 @@ def test_if_jz_jumps_past_then():
     i = instrs("var x: int = 0; if (true) { x = 1; } else { x = 2; }")
     jmp_idx = next(j for j, x in enumerate(i) if x.opcode == Opcode.JMP)
     jz = next(x for x in i if x.opcode == Opcode.JZ)
-    assert jz.operand == jmp_idx + 1   # else block starts right after JMP
+    assert jz.operand == jmp_idx + 1  # else block starts right after JMP
 
 
 def test_if_else_both_branches():
     i = instrs("var x: int = 0; if (true) { x = 1; } else { x = 2; }")
     # There should be exactly one JZ (condition test) and one JMP (then→end)
-    jz_count  = sum(1 for x in i if x.opcode == Opcode.JZ)
+    jz_count = sum(1 for x in i if x.opcode == Opcode.JZ)
     jmp_count = sum(1 for x in i if x.opcode == Opcode.JMP)
     assert jz_count == 1
     assert jmp_count == 1
@@ -283,10 +302,9 @@ def test_if_else_both_branches():
 
 def test_if_no_else_no_else_code():
     i_without = instrs("var x: int = 0; if (true) { x = 1; }")
-    i_with    = instrs("var x: int = 0; if (true) { x = 1; } else { x = 2; }")
+    i_with = instrs("var x: int = 0; if (true) { x = 1; } else { x = 2; }")
     # With else has more instructions
     assert len(i_with) > len(i_without)
-
 
 
 def test_else_if_chain():
@@ -298,6 +316,7 @@ def test_else_if_chain():
 # ---------------------------------------------------------------------------
 # while loop
 # ---------------------------------------------------------------------------
+
 
 def test_while_contains_jz_and_jmp():
     ops = opcodes("var x: int = 0; while (false) {}")
@@ -325,6 +344,7 @@ def test_while_jz_exits_loop():
 # Function declarations
 # ---------------------------------------------------------------------------
 
+
 def test_fun_starts_with_jmp():
     # First instruction must be JMP (skip over body)
     i = instrs("fun f() {}")
@@ -338,9 +358,9 @@ def test_fun_body_ends_with_ret():
 
 def test_fun_jmp_skips_to_after_ret():
     i = instrs("fun f() {}")
-    jmp = i[0]                                   # JMP lbl_skip
+    jmp = i[0]  # JMP lbl_skip
     ret_idx = next(j for j, x in enumerate(i) if x.opcode == Opcode.RET)
-    assert jmp.operand == ret_idx + 1            # skip label is right after RET
+    assert jmp.operand == ret_idx + 1  # skip label is right after RET
 
 
 def test_fun_params_stored_in_prologue():
@@ -364,6 +384,7 @@ def test_fun_params_get_data_addrs():
 # Function calls
 # ---------------------------------------------------------------------------
 
+
 def test_call_uses_call_opcode():
     assert Opcode.CALL in opcodes("fun f() {} f();")
 
@@ -371,9 +392,8 @@ def test_call_uses_call_opcode():
 def test_call_target_is_function_entry():
     i = instrs("fun f() {} f();")
     call = next(x for x in i if x.opcode == Opcode.CALL)
-    # CALL target must point to instruction after JMP (= function entry)
-    jmp = i[0]   # JMP lbl_skip
-    # function entry is instruction 1 (right after the JMP)
+    # CALL target must point to instruction after JMP (= function entry).
+    # i[0] is JMP lbl_skip, so function entry is instruction 1 (right after the JMP).
     assert call.operand == 1
 
 
@@ -397,6 +417,7 @@ def test_call_args_pushed_in_order():
 # Built-in calls
 # ---------------------------------------------------------------------------
 
+
 def test_builtin_print_no_call():
     assert Opcode.CALL not in opcodes('print("x");')
 
@@ -404,7 +425,7 @@ def test_builtin_print_no_call():
 def test_builtin_print_emits_store():
     ops = opcodes('print("hello");')
     assert Opcode.STORE in ops
-    assert Opcode.LOADI in ops   # cstr loop uses LOADI
+    assert Opcode.LOADI in ops  # cstr loop uses LOADI
 
 
 def test_builtin_leaves_push_zero():
@@ -412,12 +433,14 @@ def test_builtin_leaves_push_zero():
     i = instrs('print("x");')
     assert i[-1].opcode == Opcode.HALT
     assert i[-2].opcode == Opcode.DROP
-    assert i[-3].opcode == Opcode.PUSH and i[-3].operand == 0
+    assert i[-3].opcode == Opcode.PUSH
+    assert i[-3].operand == 0
 
 
 # ---------------------------------------------------------------------------
 # Backpatching correctness
 # ---------------------------------------------------------------------------
+
 
 def test_all_jump_targets_in_range():
     src = """
@@ -427,18 +450,16 @@ def test_all_jump_targets_in_range():
     """
     i = instrs(src)
     n = len(i)
-    jump_ops = {Opcode.JMP, Opcode.JZ, Opcode.JNZ, Opcode.JG, Opcode.JL,
-                Opcode.JGE, Opcode.JLE, Opcode.CALL}
+    jump_ops = {Opcode.JMP, Opcode.JZ, Opcode.JNZ, Opcode.JG, Opcode.JL, Opcode.JGE, Opcode.JLE, Opcode.CALL}
     for instr in i:
         if instr.opcode in jump_ops:
-            assert 0 <= instr.operand < n, (
-                f"jump target {instr.operand} out of range [0, {n})"
-            )
+            assert 0 <= instr.operand < n, f"jump target {instr.operand} out of range [0, {n})"
 
 
 # ---------------------------------------------------------------------------
 # Full example compiles without error
 # ---------------------------------------------------------------------------
+
 
 def test_full_example_compiles():
     result = compile_src(_EXAMPLE_SRC.read_text(encoding="utf-8"))
@@ -460,8 +481,10 @@ def test_full_example_data_count():
 # Errors
 # ---------------------------------------------------------------------------
 
+
 def test_undefined_var_raises():
     from app.translator.nodes import ExprStmt, Ident, Program
+
     prog = Program([ExprStmt(Ident("unknown"))])
     with pytest.raises(CodeGenError, match="undefined variable"):
         CodeGen(output_devices=_OUTPUTS).generate(prog, require_entry_point=False)
@@ -469,6 +492,7 @@ def test_undefined_var_raises():
 
 def test_undefined_function_raises():
     from app.translator.nodes import Call, ExprStmt, Program
+
     prog = Program([ExprStmt(Call("no_such_fun", []))])
     with pytest.raises(CodeGenError, match="undefined function"):
         CodeGen(output_devices=_OUTPUTS).generate(prog, require_entry_point=False)

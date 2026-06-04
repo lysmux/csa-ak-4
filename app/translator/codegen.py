@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from app.config import InputDeviceConfig, OutputDeviceConfig
 from app.isa.instruction import Instruction
@@ -30,6 +31,11 @@ from app.translator.nodes import (
     VarDecl,
     WhileStmt,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from app.translator.nodes import Expr
 
 _BUILTINS = frozenset({"print", "read", "enable_interrupts", "disable_interrupts"})
 
@@ -214,7 +220,7 @@ class CodeGen:
         self._emit(Opcode.DROP)
         self._emit(Opcode.DROP)
 
-    def _resolve_output_device(self, args: list[object]) -> tuple[OutputDeviceConfig, list[object]]:
+    def _resolve_output_device(self, args: Sequence[Expr]) -> tuple[OutputDeviceConfig, Sequence[Expr]]:
         if args and isinstance(args[0], Ident) and args[0].name in self._output_devices:
             return self._output_devices[args[0].name], args[1:]
 
@@ -271,8 +277,8 @@ class CodeGen:
                     case _:
                         return None
             case UnaryOp(op=Op.NOT, operand=e):
-                v = self._static_eval(e)
-                return None if v is None else int(v == 0)
+                inner = self._static_eval(e)
+                return None if inner is None else int(inner == 0)
             case _:
                 return None
 
@@ -627,11 +633,11 @@ class CodeGen:
                     if self._current_interrupt_vector is None:
                         msg = "read() without a label can only be used inside an interrupt handler"
                         raise CodeGenError(msg)
-                    dev = self._inputs_by_vector.get(self._current_interrupt_vector)
-                    if dev is None:
+                    vec_dev = self._inputs_by_vector.get(self._current_interrupt_vector)
+                    if vec_dev is None:
                         msg = f"no input device configured for interrupt vector {self._current_interrupt_vector}"
                         raise CodeGenError(msg)
-                    self._emit(Opcode.LOAD, dev.address)
+                    self._emit(Opcode.LOAD, vec_dev.address)
                 else:
                     msg = "read expects 0 or 1 device-label arg"
                     raise CodeGenError(msg)
