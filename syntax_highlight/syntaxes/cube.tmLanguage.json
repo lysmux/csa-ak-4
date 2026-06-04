@@ -48,7 +48,7 @@
       "patterns": [
         {
           "name": "storage.type.cube",
-          "match": "\\b(int|byte|bool|string|float|double|void)\\b"
+          "match": "\\b(int|long|byte|bool|string|void)\\b"
         }
       ]
     },

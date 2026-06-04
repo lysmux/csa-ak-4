@@ -28,6 +28,11 @@ class Opcode(IntEnum):
     INC = 0x35
     DEC = 0x36
     NEG = 0x37
+    ADDC = 0x38
+    DADD = 0x39
+    DSUB = 0x3A
+    DMUL = 0x3B
+    DDIV = 0x3C
 
     # Логические операции
     AND = 0x40

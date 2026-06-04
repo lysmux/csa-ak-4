@@ -1,6 +1,6 @@
-var a: int = 1 + 2 * 3;
+var a: long = 1 + 2 * 3;
 var b: int = 2;
 
-fun main(): int {
-    return a + b;
+fun main() {
+    print(debug, a + b);
 }

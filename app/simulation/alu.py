@@ -27,6 +27,48 @@ def _trunc_div(a: int, b: int) -> int:
     return q
 
 
+DWORD_WIDTH = 2 * WORD_WIDTH
+DWORD_MASK = (1 << DWORD_WIDTH) - 1
+DWORD_SIGN_BIT = 1 << (DWORD_WIDTH - 1)
+DWORD_MAX_SIGNED = (1 << (DWORD_WIDTH - 1)) - 1
+DWORD_MIN_SIGNED = -(1 << (DWORD_WIDTH - 1))
+
+
+def _signed_dword(value: int) -> int:
+    value &= DWORD_MASK
+    return value - (1 << DWORD_WIDTH) if value & DWORD_SIGN_BIT else value
+
+
+def _flags_dword(value: int) -> Flag:
+    flags = Flag(0)
+    if value == 0:
+        flags |= Flag.Z
+    if value & DWORD_SIGN_BIT:
+        flags |= Flag.N
+    return flags
+
+
+def dword_mul(a: int, b: int) -> tuple[int, Flag]:
+    """Double-word (2*WORD_WIDTH) multiply, modelled at value level. Returns (low_dword, flags)."""
+    a &= DWORD_MASK
+    b &= DWORD_MASK
+    value = (a * b) & DWORD_MASK
+    flags = _flags_dword(value)
+    signed_product = _signed_dword(a) * _signed_dword(b)
+    if signed_product < DWORD_MIN_SIGNED or signed_product > DWORD_MAX_SIGNED:
+        flags |= Flag.V | Flag.C
+    return value, flags
+
+
+def dword_div(a: int, b: int) -> tuple[int, Flag]:
+    """Double-word signed truncating division, modelled at value level. Returns (quotient, flags)."""
+    value = _trunc_div(_signed_dword(a), _signed_dword(b)) & DWORD_MASK
+    flags = _flags_dword(value)
+    if _signed_dword(a) == DWORD_MIN_SIGNED and _signed_dword(b) == -1:
+        flags |= Flag.V
+    return value, flags
+
+
 class Alu:
     BINARY_OPERATIONS: dict[Opcode, BinaryOp] = {
         Opcode.ADD: lambda a, b: a + b,
@@ -47,16 +89,16 @@ class Alu:
         Opcode.SHR: lambda a: a >> 1,
     }
 
-    def perform(self, opcode: Opcode, left: int, right: int = 0) -> AluResult:
+    def perform(self, opcode: Opcode, left: int, right: int = 0, carry_in: int = 0) -> AluResult:
         if opcode in self.BINARY_OPERATIONS:
-            return self.perform_binary(opcode, left, right)
+            return self.perform_binary(opcode, left, right, carry_in)
         if opcode in self.UNARY_OPERATIONS:
-            return self.perform_unary(opcode, left)
+            return self.perform_unary(opcode, left, carry_in)
 
         msg = f"{opcode.name} is not an ALU operation"
         raise ValueError(msg)
 
-    def perform_binary(self, opcode: Opcode, left: int, right: int) -> AluResult:
+    def perform_binary(self, opcode: Opcode, left: int, right: int, carry_in: int = 0) -> AluResult:
         operation = self.BINARY_OPERATIONS.get(opcode)
         if operation is None:
             msg = f"{opcode.name} is not a binary ALU operation"
@@ -64,32 +106,33 @@ class Alu:
 
         left &= WORD_MASK
         right &= WORD_MASK
-        value = operation(left, right) & WORD_MASK
-        flags = self._flags_binary(opcode, left, right, value)
+        value = (operation(left, right) + carry_in) & WORD_MASK
+        flags = self._flags_binary(opcode, left, right, value, carry_in)
         return AluResult(value, flags)
 
-    def perform_unary(self, opcode: Opcode, operand: int) -> AluResult:
+    def perform_unary(self, opcode: Opcode, operand: int, carry_in: int = 0) -> AluResult:
         operation = self.UNARY_OPERATIONS.get(opcode)
         if operation is None:
             msg = f"{opcode.name} is not a unary ALU operation"
             raise ValueError(msg)
 
         operand &= WORD_MASK
-        value = operation(operand) & WORD_MASK
+        value = (operation(operand) + carry_in) & WORD_MASK
         flags = self._flags_unary(opcode, operand, value)
         return AluResult(value, flags)
 
     @staticmethod
-    def _flags_binary(opcode: Opcode, a: int, b: int, value: int) -> Flag:
+    def _flags_binary(opcode: Opcode, a: int, b: int, value: int, carry_in: int = 0) -> Flag:
         flags = Flag.nz(value)
 
         if opcode == Opcode.ADD:
-            if a + b > WORD_MASK:
+            if a + b + carry_in > WORD_MASK:
                 flags |= Flag.C
             if (a ^ value) & (b ^ value) & SIGN_BIT:
                 flags |= Flag.V
         elif opcode in (Opcode.SUB, Opcode.CMP):
-            if a < b:
+            # carry_in carries a negative borrow (-1) for subtract-with-borrow (SBB).
+            if a - b + carry_in < 0:
                 flags |= Flag.C
             if (a ^ b) & (a ^ value) & SIGN_BIT:
                 flags |= Flag.V

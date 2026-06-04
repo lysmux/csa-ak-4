@@ -3,8 +3,33 @@ from app.isa.opcode import Opcode
 from app.simulation.alu import Alu
 from app.simulation.io import Device
 from app.simulation.memory import Memory
-from app.simulation.mux import ARMux, DStackMux
+from app.simulation.mux import ARMux, DSPMux, DStackMux
 from app.simulation.stack import Stack
+
+
+def stack_push(stack: Stack, value: int) -> None:
+    if stack.sp >= 2:
+        stack.write_mem(stack.sp - 2, stack.nos)
+    stack.nos = stack.tos if stack.sp >= 1 else 0
+    stack.tos = value
+    stack.latch_sp(DSPMux.INC)
+
+
+def stack_pop_addr(stack: Stack) -> int:
+    """Synchronous read, address phase: drop the top cell and present the fill address.
+
+    Returns the popped value (the old TOS). NOS still holds stale data until the
+    data phase latches the refilled value.
+    """
+    value = stack.tos
+    stack.latch_sp(DSPMux.DEC)
+    stack.tos = stack.nos if stack.sp >= 1 else 0
+    return value
+
+
+def stack_pop_data(stack: Stack) -> None:
+    """Synchronous read, data phase: latch the refilled NOS from stack memory."""
+    stack.nos = stack.read_mem(stack.sp - 2) if stack.sp >= 2 else 0
 
 
 class DataPath:
@@ -49,8 +74,8 @@ class DataPath:
             case ARMux.TOS:
                 self._ar = self.stack.tos
 
-    def perform_alu(self, opcode: Opcode, left: int, right: int = 0) -> int:
-        result = self._alu.perform(opcode, left, right)
+    def perform_alu(self, opcode: Opcode, left: int, right: int = 0, carry_in: int = 0) -> int:
+        result = self._alu.perform(opcode, left, right, carry_in)
         self._flags = result.flags
         self._alu_out = result.value
         return result.value
@@ -63,11 +88,17 @@ class DataPath:
 
     def push(self, mux: DStackMux) -> None:
         value = self._select_d_stack_source(mux)
-        self.stack.push(value)
+        stack_push(self.stack, value)
         self._flags = Flag.nz(value)
 
     def push_raw(self, mux: DStackMux) -> None:
-        self.stack.push(self._select_d_stack_source(mux))
+        stack_push(self.stack, self._select_d_stack_source(mux))
+
+    def pop_addr(self) -> int:
+        return stack_pop_addr(self.stack)
+
+    def pop_data(self) -> None:
+        stack_pop_data(self.stack)
 
     def _select_d_stack_source(self, mux: DStackMux) -> int:
         match mux:
@@ -88,13 +119,8 @@ class DataPath:
         result = self._alu.perform(Opcode.SUB, self.stack.nos, self.stack.tos)
         self._flags = result.flags
 
-    def pop(self) -> int:
-        result = self.stack.pop()
+    def set_nz_from_tos(self) -> None:
         self._flags = Flag.nz(self.stack.tos)
-        return result
-
-    def pop_raw(self) -> int:
-        return self.stack.pop()
 
     def write(self, value: int) -> None:
         if device := self.io_map.get(self._ar):

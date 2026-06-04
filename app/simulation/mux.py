@@ -27,3 +27,8 @@ class DStackMux(IntEnum):
     ALU = auto()
     MEMORY = auto()
     R_STACK = auto()
+
+
+class DSPMux(IntEnum):
+    INC = auto()
+    DEC = auto()

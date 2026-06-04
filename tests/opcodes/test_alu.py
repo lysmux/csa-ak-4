@@ -1,4 +1,3 @@
-import pytest
 from app.isa.flag import Flag
 from app.isa.instruction import Instruction
 from app.isa.opcode import Opcode
