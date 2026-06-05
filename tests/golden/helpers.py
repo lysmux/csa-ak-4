@@ -9,6 +9,7 @@ import click
 import yaml
 from app.cli.trace import trace_line
 from app.config import Config, InputDeviceConfig, OutputDeviceConfig
+from app.isa.consts import INSTR_BYTES, WORD_BYTES
 from app.isa.instruction import Instruction
 from app.simulation.control_unit import ControlUnit
 from app.simulation.data_path import DataPath
@@ -76,11 +77,13 @@ def get_ast_dump(ast: Program) -> str:
 
 def build_dbg(program: CompiledProgram) -> str:
     lines = ["Instructions:"]
-    for addr, word in enumerate(program.instructions):
+    for index, word in enumerate(program.instructions):
         instr = Instruction.from_binary(word)
+        addr = index * INSTR_BYTES
         lines.append(f"  0x{addr:04x} - {word:#010x} - {instr.opcode.name} {instr.operand:#010x}")
     lines.append("\nData:")
-    for addr, cell in enumerate(program.data):
+    for index, cell in enumerate(program.data):
+        addr = index * WORD_BYTES
         lines.append(f"  0x{addr:04x} - {cell & 0xFFFFFFFF:#010x} - .word {cell:#010x}")
     lines.append("\nInterrupt handlers:")
     for vec, a in program.interrupt_handlers.items():
@@ -93,7 +96,7 @@ def run_golden(
     config: Config,
     max_trace: int = DEFAULT_MAX_TRACE,
 ) -> tuple[ControlUnit, dict[str, Output], list[str]]:
-    instr_mem = Memory(config.memory_size.instruction)
+    instr_mem = Memory(config.memory_size.instruction, INSTR_BYTES)
     instr_mem.fill(program.instructions)
     data_mem = Memory(config.memory_size.data)
     data_mem.fill(program.data)

@@ -1,3 +1,4 @@
+from app.isa.consts import INSTR_BYTES
 from app.isa.instruction import Instruction
 from app.simulation.control_unit import ControlUnit, CUSnapshot
 from app.simulation.data_path import DataPath
@@ -10,7 +11,7 @@ def run_simulation(
     instructions: list[Instruction],
     initial_memory: dict[int, int],
 ) -> CUSnapshot:
-    instr_memory = Memory(50)
+    instr_memory = Memory(50, INSTR_BYTES)
     instr_memory.fill([instr.to_binary() for instr in instructions])
 
     data_memory = Memory(50)

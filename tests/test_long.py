@@ -1,5 +1,6 @@
 """End-to-end tests for the 64-bit `long` type through lexer -> analyzer -> codegen -> sim."""
 
+from app.isa.consts import INSTR_BYTES
 from app.simulation.control_unit import ControlUnit, CUSnapshot
 from app.simulation.data_path import DataPath
 from app.simulation.memory import Memory
@@ -19,7 +20,7 @@ def run_source(src: str) -> CUSnapshot:
     Analyzer().analyze(ast)
     program = CodeGen(output_devices={}).generate(ast)
 
-    instr_mem = Memory(512)
+    instr_mem = Memory(512, INSTR_BYTES)
     instr_mem.fill(program.instructions)
     data_mem = Memory(128)
     data_mem.fill(program.data)

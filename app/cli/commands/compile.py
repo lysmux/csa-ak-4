@@ -8,6 +8,7 @@ from app import binary
 from app.cli.errors import error_wrap
 from app.cli.helpers import Output, ReadableFile, WritableFile, load_config
 from app.config import Config
+from app.isa.consts import INSTR_BYTES, WORD_BYTES
 from app.isa.instruction import Instruction
 from app.translator.analyzer import Analyzer
 from app.translator.codegen import CodeGen, CompiledProgram
@@ -36,13 +37,15 @@ def _ascii_hint(value: int) -> str:
 def write_debug(program: CompiledProgram, path: Path) -> None:
     with path.open("w", encoding="utf-8") as f:
         f.write("; Instructions\n")
-        for addr, instr in enumerate(program.instructions):
+        for index, instr in enumerate(program.instructions):
             decoded = Instruction.from_binary(instr)
+            addr = index * INSTR_BYTES
             f.write(f"  0x{addr:04X}  0x{instr:010X}  {decoded.opcode.name:<10}  0x{decoded.operand:08X}\n")
 
         f.write("\n; Data\n")
-        for addr, cell in enumerate(program.data):
+        for index, cell in enumerate(program.data):
             word = cell & 0xFFFFFFFF
+            addr = index * WORD_BYTES
             f.write(f"  0x{addr:04X}  0x{word:08X}{_ascii_hint(word)}\n")
 
         f.write("\n; Interrupt Handlers\n")

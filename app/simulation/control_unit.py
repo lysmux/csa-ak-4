@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Never
 
-from app.isa.consts import SIGN_BIT, WORD_MASK
+from app.isa.consts import INSTR_BYTES, SIGN_BIT, WORD_MASK
 from app.isa.flag import Flag, ProgramState
 from app.isa.instruction import Instruction
 from app.isa.opcode import Opcode
@@ -104,7 +104,7 @@ class ControlUnit:
     def latch_pc(self, mux: PCMux) -> None:
         match mux:
             case PCMux.NEXT:
-                self._pc += 1
+                self._pc += INSTR_BYTES
             case PCMux.ADDRESS:
                 self._pc = self._instr.operand
             case PCMux.VECTOR:

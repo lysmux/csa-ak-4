@@ -1,3 +1,4 @@
+from app.isa.consts import INSTR_BYTES, WORD_BYTES
 from app.isa.instruction import Instruction
 from app.isa.opcode import Opcode
 
@@ -37,23 +38,28 @@ def test_factorial():
         17: PUSH 1          [1]
         18: RET
     """
+    # Byte-addressed: code targets are instruction_index * INSTR_BYTES,
+    # data addresses are word_index * WORD_BYTES.
+    fac = 4 * INSTR_BYTES  # fac() entry (instruction 4)
+    base = 15 * INSTR_BYTES  # base-case entry (instruction 15)
+    result = 0x2 * WORD_BYTES  # result cell (word index 2)
     memory = {0x0: 8}
     instructions = [
         # main
         Instruction(Opcode.LOAD, 0x0),  # 0
-        Instruction(Opcode.CALL, 4),  # 1
-        Instruction(Opcode.STORE, 0x2),  # 2
+        Instruction(Opcode.CALL, fac),  # 1
+        Instruction(Opcode.STORE, result),  # 2
         Instruction(Opcode.HALT),  # 3
         # fac(n)
         Instruction(Opcode.PUSH, 1),  # 4
         Instruction(Opcode.CMP),  # 5  FLAGS = n-1
-        Instruction(Opcode.JLE, 15),  # 6  n <= 1 → base
+        Instruction(Opcode.JLE, base),  # 6  n <= 1 → base
         # recursive branch
         Instruction(Opcode.DROP),  # 7
         Instruction(Opcode.DUP),  # 8
         Instruction(Opcode.PSHR),  # 9
         Instruction(Opcode.DEC),  # 10
-        Instruction(Opcode.CALL, 4),  # 11
+        Instruction(Opcode.CALL, fac),  # 11
         Instruction(Opcode.POPR),  # 12
         Instruction(Opcode.MUL),  # 13
         Instruction(Opcode.RET),  # 14

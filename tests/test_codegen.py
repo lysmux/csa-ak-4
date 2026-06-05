@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 from app.config import OutputDeviceConfig
+from app.isa.consts import INSTR_BYTES, WORD_BYTES
 from app.isa.instruction import Instruction
 from app.isa.opcode import Opcode
 from app.translator.codegen import CodeGen, CodeGenError, CompiledProgram
@@ -108,7 +109,7 @@ def test_ident_load():
     i = instrs("var x: int = 5; var y: int = x;")
     load_idx = next(j for j, instr in enumerate(i) if instr.opcode == Opcode.LOAD)
     assert i[load_idx] == Instruction(Opcode.LOAD, 0)
-    assert i[load_idx + 1] == Instruction(Opcode.STORE, 1)
+    assert i[load_idx + 1] == Instruction(Opcode.STORE, WORD_BYTES)
 
 
 def test_shadowing_allocates_new_addr():
@@ -227,8 +228,8 @@ def test_not_result_inverts():
     # !x (x — var) → JZ → PUSH 1 если x == 0
     i = instrs("var x: bool = true; var y: bool = !x;")
     jz = next(x for x in i if x.opcode == Opcode.JZ)
-    assert i[jz.operand].opcode == Opcode.PUSH
-    assert i[jz.operand].operand == 1
+    assert i[jz.operand // INSTR_BYTES].opcode == Opcode.PUSH
+    assert i[jz.operand // INSTR_BYTES].operand == 1
 
 
 # ---------------------------------------------------------------------------
@@ -288,7 +289,7 @@ def test_if_jz_jumps_past_then():
     i = instrs("var x: int = 0; if (true) { x = 1; } else { x = 2; }")
     jmp_idx = next(j for j, x in enumerate(i) if x.opcode == Opcode.JMP)
     jz = next(x for x in i if x.opcode == Opcode.JZ)
-    assert jz.operand == jmp_idx + 1  # else block starts right after JMP
+    assert jz.operand // INSTR_BYTES == jmp_idx + 1  # else block starts right after JMP
 
 
 def test_if_else_both_branches():
@@ -329,7 +330,7 @@ def test_while_jmp_is_backward():
     i = instrs("var x: int = 5; while (x > 0) { x = x - 1; }")
     jmps = [(idx, x) for idx, x in enumerate(i) if x.opcode == Opcode.JMP]
     # At least one JMP jumps backward (loop back)
-    assert any(x.operand < idx for idx, x in jmps)
+    assert any(x.operand // INSTR_BYTES < idx for idx, x in jmps)
 
 
 def test_while_jz_exits_loop():
@@ -337,7 +338,7 @@ def test_while_jz_exits_loop():
     i = instrs("var x: int = 0; while (false) { x = 1; }")
     jz = next(x for x in i if x.opcode == Opcode.JZ)
     last_jmp = max(idx for idx, x in enumerate(i) if x.opcode == Opcode.JMP)
-    assert jz.operand > last_jmp
+    assert jz.operand // INSTR_BYTES > last_jmp
 
 
 # ---------------------------------------------------------------------------
@@ -360,7 +361,7 @@ def test_fun_jmp_skips_to_after_ret():
     i = instrs("fun f() {}")
     jmp = i[0]  # JMP lbl_skip
     ret_idx = next(j for j, x in enumerate(i) if x.opcode == Opcode.RET)
-    assert jmp.operand == ret_idx + 1  # skip label is right after RET
+    assert jmp.operand // INSTR_BYTES == ret_idx + 1  # skip label is right after RET
 
 
 def test_fun_params_stored_in_prologue():
@@ -394,7 +395,7 @@ def test_call_target_is_function_entry():
     call = next(x for x in i if x.opcode == Opcode.CALL)
     # CALL target must point to instruction after JMP (= function entry).
     # i[0] is JMP lbl_skip, so function entry is instruction 1 (right after the JMP).
-    assert call.operand == 1
+    assert call.operand // INSTR_BYTES == 1
 
 
 def test_call_followed_by_push_zero():
@@ -453,7 +454,9 @@ def test_all_jump_targets_in_range():
     jump_ops = {Opcode.JMP, Opcode.JZ, Opcode.JNZ, Opcode.JG, Opcode.JL, Opcode.JGE, Opcode.JLE, Opcode.CALL}
     for instr in i:
         if instr.opcode in jump_ops:
-            assert 0 <= instr.operand < n, f"jump target {instr.operand} out of range [0, {n})"
+            assert 0 <= instr.operand < n * INSTR_BYTES, (
+                f"jump target {instr.operand} out of range [0, {n * INSTR_BYTES})"
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -469,7 +472,7 @@ def test_full_example_compiles():
 
 def test_full_example_instruction_count():
     result = compile_src(_EXAMPLE_SRC.read_text(encoding="utf-8"))
-    assert len(result.instructions) == 100
+    assert len(result.instructions) == 102
 
 
 def test_full_example_data_count():

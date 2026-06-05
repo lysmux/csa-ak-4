@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from app.config import InputDeviceConfig, OutputDeviceConfig
+from app.isa.consts import INSTR_BYTES, WORD_BYTES
 from app.isa.instruction import Instruction
 from app.isa.opcode import Opcode
 from app.translator.nodes import (
@@ -140,7 +141,7 @@ class CodeGen:
         else:
             self._emit(Opcode.HALT)
         self._backpatch()
-        handlers_resolved = {v: self._labels[lbl] for v, lbl in self._interrupt_handlers.items()}
+        handlers_resolved = {v: self._labels[lbl] * INSTR_BYTES for v, lbl in self._interrupt_handlers.items()}
         return CompiledProgram(
             instructions=[i.to_binary() for i in self._instrs],
             data=self._data,
@@ -165,7 +166,7 @@ class CodeGen:
 
     def _backpatch(self) -> None:
         for idx, label in self._patches:
-            addr = self._labels[label]
+            addr = self._labels[label] * INSTR_BYTES
             instr = self._instrs[idx]
             self._instrs[idx] = Instruction(instr.opcode, addr)
 
@@ -182,14 +183,14 @@ class CodeGen:
         return 2 if type_name == LONG else 1
 
     def _alloc_array(self, name: str, size: int) -> int:
-        addr = self._data_size
+        addr = self._data_size * WORD_BYTES
         self._scopes[-1][name] = (addr, "array")
         self._data_size += size
         self._data.extend([0] * size)
         return addr
 
     def _alloc_var(self, name: str, type_name: str = INT) -> int:
-        addr = self._data_size
+        addr = self._data_size * WORD_BYTES
         width = self._width(type_name)
         self._scopes[-1][name] = (addr, type_name)
         self._data_size += width
@@ -197,13 +198,16 @@ class CodeGen:
         return addr
 
     def _alloc_string(self, s: str) -> int:
-        addr = self._data_size
+        addr = self._data_size * WORD_BYTES
         for ch in s:
             self._data.append(ord(ch))
             self._data_size += 1
         self._data.append(0)
         self._data_size += 1
         return addr
+
+    def _set_data_word(self, byte_addr: int, value: int) -> None:
+        self._data[byte_addr // WORD_BYTES] = value & 0xFFFFFFFF
 
     def _emit_cstr_loop(self, str_addr: int, mmio_addr: int) -> None:
         lbl_loop = self._fresh_label()
@@ -214,7 +218,8 @@ class CodeGen:
         self._emit(Opcode.LOADI)
         self._emit_jump(Opcode.JZ, lbl_exit)
         self._emit(Opcode.STORE, mmio_addr)
-        self._emit(Opcode.INC)
+        self._emit(Opcode.PUSH, WORD_BYTES)
+        self._emit(Opcode.ADD)
         self._emit_jump(Opcode.JMP, lbl_loop)
         self._mark_label(lbl_exit)
         self._emit(Opcode.DROP)
@@ -357,7 +362,7 @@ class CodeGen:
 
     def _emit_store(self, addr: int, type_name: str) -> None:
         if type_name == LONG:
-            self._emit(Opcode.STORE, addr + 1)  # hi (TOS)
+            self._emit(Opcode.STORE, addr + WORD_BYTES)  # hi (TOS)
             self._emit(Opcode.STORE, addr)  # lo (NOS)
         else:
             self._emit(Opcode.STORE, addr)
@@ -459,6 +464,8 @@ class CodeGen:
                 base = self._var_addr(name)
                 self._emit(Opcode.PUSH, base)
                 self._gen_as(index, INT)
+                self._emit(Opcode.PUSH, WORD_BYTES)
+                self._emit(Opcode.MUL)
                 self._emit(Opcode.ADD)
                 self._emit(Opcode.STOREI)
 
@@ -477,8 +484,8 @@ class CodeGen:
         if type_name == LONG:
             if sv is not None:
                 vv = sv & 0xFFFFFFFFFFFFFFFF
-                self._data[addr] = vv & 0xFFFFFFFF
-                self._data[addr + 1] = (vv >> 32) & 0xFFFFFFFF
+                self._set_data_word(addr, vv & 0xFFFFFFFF)
+                self._set_data_word(addr + WORD_BYTES, (vv >> 32) & 0xFFFFFFFF)
                 self._emit_long_literal(sv)
             else:
                 self._gen_as(value, LONG)
@@ -486,7 +493,7 @@ class CodeGen:
             return
 
         if sv is not None:
-            self._data[addr] = sv & 0xFFFFFFFF
+            self._set_data_word(addr, sv & 0xFFFFFFFF)
             if is_const:
                 self._const_values[addr] = sv
                 return
@@ -536,7 +543,7 @@ class CodeGen:
                 addr = self._var_addr(name)
                 if type_name == LONG:
                     self._emit(Opcode.LOAD, addr)  # lo
-                    self._emit(Opcode.LOAD, addr + 1)  # hi
+                    self._emit(Opcode.LOAD, addr + WORD_BYTES)  # hi
                     return LONG
                 cv = self._const_values.get(addr)
                 if cv is not None:
@@ -549,6 +556,8 @@ class CodeGen:
                 base = self._var_addr(name)
                 self._emit(Opcode.PUSH, base)
                 self._gen_as(index, INT)
+                self._emit(Opcode.PUSH, WORD_BYTES)
+                self._emit(Opcode.MUL)
                 self._emit(Opcode.ADD)
                 self._emit(Opcode.LOADI)
                 return INT
