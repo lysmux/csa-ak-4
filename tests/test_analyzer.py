@@ -36,6 +36,82 @@ def has_error(source: str, fragment: str) -> None:
     assert fragment in err, f"expected error containing {fragment!r}, got: {err}"
 
 
+def error_with(source: str, *, outputs: set[str] | None = None, inputs: set[str] | None = None) -> str | None:
+    tokens = Lexer(source).tokenize()
+    ast = Parser(tokens).parse()
+    try:
+        Analyzer(output_devices=outputs or set(), input_devices=inputs or set()).analyze(ast)
+    except SemanticError as e:
+        return str(e)
+    else:
+        return None
+
+
+# ---------------------------------------------------------------------------
+# return statements
+# ---------------------------------------------------------------------------
+
+
+def test_return_value_from_void_function_errors():
+    has_error("fun f() { return 1; }", "cannot return a value from a void function")
+
+
+def test_return_value_matches_declared_type_ok():
+    ok("fun f(): int { return 1; }")
+
+
+def test_return_from_interrupt_handler_errors():
+    has_error("interrupt 1 h() { return; }", "cannot return from an interrupt handler")
+
+
+# ---------------------------------------------------------------------------
+# builtins: read / print device labels
+# ---------------------------------------------------------------------------
+
+
+def test_read_without_label_outside_interrupt_errors():
+    has_error("var x: int = read();", "can only be used in an interrupt handler")
+
+
+def test_read_without_label_inside_interrupt_ok():
+    assert error_with("interrupt 1 h() { var x: int = read(); }") is None
+
+
+def test_read_with_non_input_label_errors():
+    err = error_with("var x: int = read(scr);", outputs={"scr"})
+    assert err is not None
+    assert "is not an input device label" in err
+
+
+def test_read_with_input_label_ok():
+    assert error_with("interrupt 1 h() { var x: int = read(kbd); }", inputs={"kbd"}) is None
+
+
+def test_interrupt_handler_cannot_be_called_directly():
+    has_error("interrupt 1 h() {} fun main() { h(); }", "cannot be called directly")
+
+
+# ---------------------------------------------------------------------------
+# device labels may only appear in their dedicated position
+# ---------------------------------------------------------------------------
+
+
+def test_output_label_as_value_errors():
+    err = error_with("var x: int = scr;", outputs={"scr"})
+    assert err is not None
+    assert "output device label" in err
+
+
+def test_input_label_as_value_errors():
+    err = error_with("var x: int = kbd;", inputs={"kbd"})
+    assert err is not None
+    assert "input device label" in err
+
+
+def test_print_to_named_output_ok():
+    assert error_with('fun main() { print(scr, "hi"); }', outputs={"scr"}) is None
+
+
 # ---------------------------------------------------------------------------
 # Declarations — valid
 # ---------------------------------------------------------------------------

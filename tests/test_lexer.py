@@ -213,3 +213,54 @@ def test_increment_not_two_plus():
 def test_unknown_character_raises():
     with pytest.raises(LexerError):
         tokenize("@")
+
+
+# ---------------------------------------------------------------------------
+# Number literals
+# ---------------------------------------------------------------------------
+
+
+def test_hex_literal():
+    # Hex is normalized to its decimal string form.
+    assert tokenize("0xFF") == [Token(TokenType.NUMBER, "255", 1, 1)]
+
+
+def test_hex_literal_uppercase_prefix():
+    assert tokenize("0X10") == [Token(TokenType.NUMBER, "16", 1, 1)]
+
+
+# ---------------------------------------------------------------------------
+# String escape sequences
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("src", "decoded"),
+    [
+        (r'"a\nb"', "a\nb"),
+        (r'"a\tb"', "a\tb"),
+        (r'"a\rb"', "a\rb"),
+        (r'"a\0b"', "a\0b"),
+        (r'"a\\b"', "a\\b"),
+        (r'"a\"b"', 'a"b'),
+        (r'"a\'b"', "a'b"),
+    ],
+)
+def test_string_escapes(src: str, decoded: str):
+    tokens = tokenize(src)
+    assert tokens == [Token(TokenType.STRING, decoded, 1, 1)]
+
+
+def test_unknown_escape_raises():
+    with pytest.raises(LexerError, match="Unknown escape"):
+        tokenize(r'"\q"')
+
+
+def test_unterminated_string_raises():
+    with pytest.raises(LexerError, match="Unterminated string"):
+        tokenize('"no end')
+
+
+def test_unterminated_escape_raises():
+    with pytest.raises(LexerError, match="Unterminated escape"):
+        tokenize('"abc\\')

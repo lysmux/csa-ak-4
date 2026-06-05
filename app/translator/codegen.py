@@ -79,6 +79,21 @@ class CompiledProgram:
     data: list[int]
     interrupt_handlers: dict[int, int]
 
+    def __str__(self) -> str:
+        lines = ["Instructions:"]
+        for index, word in enumerate(self.instructions):
+            instr = Instruction.from_binary(word)
+            addr = index * INSTR_BYTES
+            lines.append(f"  0x{addr:04x} - {word:#010x} - {instr.opcode.name} {instr.operand:#010x}")
+        lines.append("\nData:")
+        for index, cell in enumerate(self.data):
+            addr = index * WORD_BYTES
+            lines.append(f"  0x{addr:04x} - {cell & 0xFFFFFFFF:#010x} - .word {cell:#010x}")
+        lines.append("\nInterrupt handlers:")
+        for vec, a in self.interrupt_handlers.items():
+            lines.append(f"  vector {vec} -> {a:#06x}")
+        return "\n".join(lines)
+
 
 class CodeGenError(Exception):
     pass

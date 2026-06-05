@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 import dataclasses as _dc
-import sys
 from abc import ABC
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import TextIO
 
 
 class Op(StrEnum):
@@ -28,7 +26,11 @@ class Op(StrEnum):
 
 
 @dataclass
-class ASTNode(ABC): ...  # noqa: B024
+class ASTNode(ABC):  # noqa: B024
+    def __str__(self) -> str:
+        lines: list[str] = []
+        _ast_collect(self, "", "", lines)
+        return "\n".join(lines)
 
 
 @dataclass
@@ -178,12 +180,6 @@ type Statement = (
     | ReturnStmt
 )
 type Expr = BinaryOp | UnaryOp | PostfixOp | Call | IndexExpr | Ident | Number | String | Bool
-
-
-def print_ast(node: ASTNode, *, file: TextIO = sys.stdout) -> None:
-    lines: list[str] = []
-    _ast_collect(node, "", "", lines)
-    print("\n".join(lines), file=file)
 
 
 def _ast_collect(node: object, prefix: str, child_prefix: str, lines: list[str]) -> None:

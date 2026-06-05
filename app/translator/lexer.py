@@ -185,7 +185,7 @@ class Lexer:
             self.advance()
             self.advance()
 
-            hex_num = self.scan_while(lambda c: c in "abcdefABCDEF")
+            hex_num = self.scan_while(lambda c: c in "0123456789abcdefABCDEF")
             value = str(int(hex_num, 16))
         else:
             value = self.scan_while(lambda c: c.isdigit())

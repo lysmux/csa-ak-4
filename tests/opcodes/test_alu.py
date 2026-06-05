@@ -440,3 +440,123 @@ def test_shr_flag_z_c():
     snapshot = run_simulation(instructions, {})
     assert snapshot.tos == 0x0
     assert snapshot.flags == Flag.Z | Flag.C
+
+
+# ---------------------------------------------------------------------------
+# CMP — sets FLAGS = NOS - TOS, leaves the stack untouched
+# ---------------------------------------------------------------------------
+
+
+def test_cmp_leaves_stack_untouched():
+    instructions = [
+        Instruction(Opcode.PUSH, 0x5),
+        Instruction(Opcode.PUSH, 0x3),
+        Instruction(Opcode.CMP),
+        Instruction(Opcode.HALT),
+    ]
+    snapshot = run_simulation(instructions, {})
+    # NOS - TOS = 5 - 3 = 2  → no flags; both operands still on the stack
+    assert snapshot.tos == 0x3
+    assert snapshot.nos == 0x5
+    assert snapshot.data_stack[:2] == [0x5, 0x3]
+    assert snapshot.flags == Flag(0)
+
+
+def test_cmp_equal_sets_z():
+    instructions = [
+        Instruction(Opcode.PUSH, 0x7),
+        Instruction(Opcode.PUSH, 0x7),
+        Instruction(Opcode.CMP),
+        Instruction(Opcode.HALT),
+    ]
+    snapshot = run_simulation(instructions, {})
+    assert snapshot.flags == Flag.Z
+
+
+def test_cmp_less_sets_n_c():
+    # NOS(1) - TOS(2) = -1  →  N C (borrow)
+    instructions = [
+        Instruction(Opcode.PUSH, 0x1),
+        Instruction(Opcode.PUSH, 0x2),
+        Instruction(Opcode.CMP),
+        Instruction(Opcode.HALT),
+    ]
+    snapshot = run_simulation(instructions, {})
+    assert snapshot.flags == Flag.N | Flag.C
+
+
+def test_cmp_signed_overflow_sets_v():
+    # NOS(MIN) - TOS(MAX) = 1  →  V only
+    instructions = [
+        Instruction(Opcode.PUSH, 0x80000000),
+        Instruction(Opcode.PUSH, 0x7FFFFFFF),
+        Instruction(Opcode.CMP),
+        Instruction(Opcode.HALT),
+    ]
+    snapshot = run_simulation(instructions, {})
+    assert snapshot.flags == Flag.V
+
+
+# ---------------------------------------------------------------------------
+# ADDC — add with carry-in from the C flag (multi-word addition)
+# ---------------------------------------------------------------------------
+
+
+def test_addc_with_carry():
+    # Low add 0xFFFFFFFF + 1 = 0 with C=1; DROP keeps C; high add 0x10 + 0x20 + 1
+    instructions = [
+        Instruction(Opcode.PUSH, 0x10),  # ahi
+        Instruction(Opcode.PUSH, 0x20),  # bhi
+        Instruction(Opcode.PUSH, 0xFFFFFFFF),  # alo
+        Instruction(Opcode.PUSH, 0x1),  # blo
+        Instruction(Opcode.ADD),  # alo + blo = 0, C=1
+        Instruction(Opcode.DROP),  # discard low result, C preserved
+        Instruction(Opcode.ADDC),  # ahi + bhi + C = 0x31
+        Instruction(Opcode.HALT),
+    ]
+    snapshot = run_simulation(instructions, {})
+    assert snapshot.tos == 0x31
+
+
+def test_addc_without_carry():
+    # Low add 1 + 1 = 2 with C=0; high add 0x10 + 0x20 + 0
+    instructions = [
+        Instruction(Opcode.PUSH, 0x10),
+        Instruction(Opcode.PUSH, 0x20),
+        Instruction(Opcode.PUSH, 0x1),
+        Instruction(Opcode.PUSH, 0x1),
+        Instruction(Opcode.ADD),  # 1 + 1 = 2, C=0
+        Instruction(Opcode.DROP),
+        Instruction(Opcode.ADDC),  # 0x10 + 0x20 + 0 = 0x30
+        Instruction(Opcode.HALT),
+    ]
+    snapshot = run_simulation(instructions, {})
+    assert snapshot.tos == 0x30
+
+
+# ---------------------------------------------------------------------------
+# I2L — widen int -> long by pushing the sign-extension high word above TOS
+# ---------------------------------------------------------------------------
+
+
+def test_i2l_positive_zero_extends():
+    instructions = [
+        Instruction(Opcode.PUSH, 0x5),
+        Instruction(Opcode.I2L),
+        Instruction(Opcode.HALT),
+    ]
+    snapshot = run_simulation(instructions, {})
+    # lo (NOS) keeps the value, hi (TOS) is the sign extension (0 for positive)
+    assert snapshot.nos == 0x5
+    assert snapshot.tos == 0x0
+
+
+def test_i2l_negative_sign_extends():
+    instructions = [
+        Instruction(Opcode.PUSH, 0x80000000),
+        Instruction(Opcode.I2L),
+        Instruction(Opcode.HALT),
+    ]
+    snapshot = run_simulation(instructions, {})
+    assert snapshot.nos == 0x80000000
+    assert snapshot.tos == 0xFFFFFFFF
