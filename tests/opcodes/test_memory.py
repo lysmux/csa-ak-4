@@ -2,7 +2,7 @@ from app.isa.consts import WORD_BYTES
 from app.isa.instruction import Instruction
 from app.isa.opcode import Opcode
 
-from tests.shared import run_simulation
+from tests.shared import read_word, run_simulation
 
 
 def test_load():
@@ -27,7 +27,7 @@ def test_store():
 
     snapshot = run_simulation(instructions, memory)
 
-    assert snapshot.data_memory[0] == 0x1
+    assert read_word(snapshot.data_memory, 0) == 0x1
 
 
 # ---------------------------------------------------------------------------
@@ -62,7 +62,7 @@ def test_storei():
 
     snapshot = run_simulation(instructions, {})
 
-    assert snapshot.data_memory[2] == 0x42
+    assert read_word(snapshot.data_memory, 2) == 0x42
 
 
 def test_storei_then_loadi_round_trip():
@@ -79,4 +79,4 @@ def test_storei_then_loadi_round_trip():
     snapshot = run_simulation(instructions, {})
 
     assert snapshot.tos == 0x1234
-    assert snapshot.data_memory[3] == 0x1234
+    assert read_word(snapshot.data_memory, 3) == 0x1234

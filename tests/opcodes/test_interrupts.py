@@ -4,9 +4,11 @@ from app.isa.opcode import Opcode
 from app.simulation.control_unit import ControlUnit, CUSnapshot
 from app.simulation.data_path import DataPath
 from app.simulation.io import Device, Input, Output
-from app.simulation.memory import Memory
+from app.simulation.memory import DataMemory, InstrMemory
 from app.simulation.runner import run_control_unit
 from app.simulation.stack import Stack
+
+from tests.shared import read_word
 
 _IN_ADDR = 0x80  # memory-mapped input port (byte address)
 
@@ -18,9 +20,9 @@ def _run(
     vector_table: dict[int, int] | None = None,
     limit: int = 1000,
 ) -> CUSnapshot:
-    instr_mem = Memory(64, INSTR_BYTES)
+    instr_mem = InstrMemory(512)
     instr_mem.fill([i.to_binary() for i in instructions])
-    data_mem = Memory(64)
+    data_mem = DataMemory(256)
     data_path = DataPath(memory=data_mem, stack=Stack(64), io_map=io_map or {})
     cu = ControlUnit(
         data_path=data_path,
@@ -110,7 +112,7 @@ def test_ei_interrupt_runs_handler_and_rti_returns():
     dev = Input(schedule=[(3, 0x42)], vector=1)
     snapshot = _run(program, io_map={_IN_ADDR: dev}, vector_table={1: addr(handler_index)})
     # the handler read the port and stored it; RTI let the program reach HALT
-    assert snapshot.data_memory[0] == 0x42
+    assert read_word(snapshot.data_memory, 0) == 0x42
 
 
 def test_di_suppresses_interrupt():
@@ -119,4 +121,4 @@ def test_di_suppresses_interrupt():
     dev = Input(schedule=[(12, 0x42)], vector=1)
     snapshot = _run(program, io_map={_IN_ADDR: dev}, vector_table={1: addr(handler_index)})
     # interrupts disabled → handler never runs → M[0] stays 0
-    assert snapshot.data_memory[0] == 0
+    assert read_word(snapshot.data_memory, 0) == 0

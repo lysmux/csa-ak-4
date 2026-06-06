@@ -1,15 +1,16 @@
 """End-to-end tests for the 64-bit `long` type through lexer -> analyzer -> codegen -> sim."""
 
-from app.isa.consts import INSTR_BYTES
 from app.simulation.control_unit import ControlUnit, CUSnapshot
 from app.simulation.data_path import DataPath
-from app.simulation.memory import Memory
+from app.simulation.memory import DataMemory, InstrMemory
 from app.simulation.runner import run_control_unit
 from app.simulation.stack import Stack
 from app.translator.analyzer import Analyzer
 from app.translator.codegen import CodeGen
 from app.translator.lexer import Lexer
 from app.translator.parser import Parser
+
+from tests.shared import read_word
 
 MASK64 = 0xFFFFFFFFFFFFFFFF
 
@@ -20,9 +21,9 @@ def run_source(src: str) -> CUSnapshot:
     Analyzer().analyze(ast)
     program = CodeGen(output_devices={}).generate(ast)
 
-    instr_mem = Memory(512, INSTR_BYTES)
+    instr_mem = InstrMemory(512)
     instr_mem.fill(program.instructions)
-    data_mem = Memory(128)
+    data_mem = DataMemory(128)
     data_mem.fill(program.data)
 
     cu = ControlUnit(
@@ -35,7 +36,7 @@ def run_source(src: str) -> CUSnapshot:
 
 
 def read_long(snapshot: CUSnapshot, addr: int) -> int:
-    return (snapshot.data_memory[addr + 1] << 32) | snapshot.data_memory[addr]
+    return (read_word(snapshot.data_memory, addr + 1) << 32) | read_word(snapshot.data_memory, addr)
 
 
 def _prog(body: str) -> str:

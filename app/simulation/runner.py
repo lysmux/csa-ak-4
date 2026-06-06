@@ -6,12 +6,11 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from app.config import Config, IOConfig
-from app.isa.consts import INSTR_BYTES
 from app.isa.state import State
 from app.simulation.control_unit import ControlUnit
 from app.simulation.data_path import DataPath
 from app.simulation.io import Device, Input, Output
-from app.simulation.memory import Memory
+from app.simulation.memory import DataMemory, InstrMemory
 from app.simulation.stack import Stack
 from app.translator.codegen import CompiledProgram
 
@@ -69,10 +68,10 @@ def simulate(
     config: Config,
     on_tick: Callable[[ControlUnit], None] | None = None,
 ) -> SimulationResult:
-    instr_memory = Memory(config.memory_size.instruction, INSTR_BYTES)
+    instr_memory = InstrMemory(config.memory_size.instruction)
     instr_memory.fill(program.instructions)
 
-    data_memory = Memory(config.memory_size.data)
+    data_memory = DataMemory(config.memory_size.data)
     data_memory.fill(program.data)
 
     io_devices = _build_io_devices(config.io)

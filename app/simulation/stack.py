@@ -2,13 +2,6 @@ from app.simulation.mux import DSPMux
 
 
 class Stack:
-    """Register-model stack: TOS/NOS are registers, deeper cells live in memory.
-
-    `sp` is the logical depth. The sequencing of spill/fill and the address
-    arithmetic lives in the data path / control unit; this class only exposes
-    the registers, the backing memory port, and `latch_sp` (+1 / -1).
-    """
-
     def __init__(self, capacity: int) -> None:
         self.capacity = capacity
         self._mem: list[int] = [0] * capacity
@@ -53,7 +46,6 @@ class Stack:
 
     @property
     def stack(self) -> list[int]:
-        """Logical stack contents (bottom-to-top), padded to capacity with zeros."""
         view = [0] * self.capacity
         for i in range(max(self.sp - 2, 0)):
             view[i] = self._mem[i]

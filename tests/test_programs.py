@@ -2,7 +2,7 @@ from app.isa.consts import INSTR_BYTES, WORD_BYTES
 from app.isa.instruction import Instruction
 from app.isa.opcode import Opcode
 
-from tests.shared import run_simulation
+from tests.shared import read_word, run_simulation
 
 
 def test_factorial():
@@ -72,4 +72,4 @@ def test_factorial():
 
     snapshot = run_simulation(instructions, memory)
 
-    assert snapshot.data_memory[0x2] == 40320
+    assert read_word(snapshot.data_memory, 0x2) == 40320

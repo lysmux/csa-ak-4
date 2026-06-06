@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from app.isa.opcode import Opcode
 
 
-@dataclass
+@dataclass(frozen=True)
 class Instruction:
     opcode: Opcode
     operand: int = 0
@@ -14,7 +14,7 @@ class Instruction:
     @classmethod
     def from_binary(cls, binary: int) -> "Instruction":
         if binary.bit_length() > 40:
-            msg = f"Instruction code too long: {binary:#X}"
+            msg = f"Instruction code too long: {binary:#x}"
             raise ValueError(msg)
 
         opcode = Opcode((binary >> 32) & 0xFF)

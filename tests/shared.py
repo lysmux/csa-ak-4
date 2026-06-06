@@ -1,20 +1,26 @@
-from app.isa.consts import INSTR_BYTES
+from app.isa.consts import WORD_BYTES
 from app.isa.instruction import Instruction
 from app.simulation.control_unit import ControlUnit, CUSnapshot
 from app.simulation.data_path import DataPath
-from app.simulation.memory import Memory
+from app.simulation.memory import DataMemory, InstrMemory
 from app.simulation.runner import run_control_unit
 from app.simulation.stack import Stack
+
+
+def read_word(memory: bytearray, index: int) -> int:
+    """Decode the little-endian 32-bit word at the given word index of a byte image."""
+    start = index * WORD_BYTES
+    return int.from_bytes(memory[start : start + WORD_BYTES], "little")
 
 
 def run_simulation(
     instructions: list[Instruction],
     initial_memory: dict[int, int],
 ) -> CUSnapshot:
-    instr_memory = Memory(50, INSTR_BYTES)
+    instr_memory = InstrMemory(512)
     instr_memory.fill([instr.to_binary() for instr in instructions])
 
-    data_memory = Memory(50)
+    data_memory = DataMemory(256)
     for addr, value in initial_memory.items():
         data_memory.write(addr, value)
 

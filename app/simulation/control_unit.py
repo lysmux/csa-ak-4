@@ -23,8 +23,8 @@ class CUSnapshot:
 
     ar: int
 
-    data_memory: list[int]
-    instr_memory: list[int]
+    data_memory: bytearray
+    instr_memory: bytearray
 
     data_stack: list[int]
     tos: int
@@ -92,8 +92,8 @@ class ControlUnit:
             instruction=self._instr,
             flags=self.data_path.flags,
             ar=self.data_path._ar,
-            data_memory=self.data_path.memory._memory,
-            instr_memory=self._instr_memory._memory,
+            data_memory=self.data_path.memory.memory,
+            instr_memory=self._instr_memory.memory,
             data_stack=self.data_path.stack.stack,
             tos=self.data_path.stack.tos,
             nos=self.data_path.stack.nos,
