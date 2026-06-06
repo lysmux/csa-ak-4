@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from functools import partial
 from pathlib import Path
 
@@ -7,21 +5,21 @@ import click
 
 from app import binary
 from app.cli.errors import error_wrap
-from app.cli.helpers import Output, ReadableFile, load_config
+from app.cli.helpers import Output, ReadableFile
 from app.cli.trace import trace_line
+from app.config import Config
 from app.simulation.control_unit import ControlUnit
 from app.simulation.runner import simulate
 
 
 @click.command()
 @click.argument("file", type=ReadableFile)
-@click.option("-c", "--config", "config_path", type=ReadableFile)
+@click.option("-c", "--config", "config_path", type=ReadableFile, required=True)
 @click.option("--trace", is_flag=True, default=False, help="Print CPU state on every tick")
 @error_wrap
-def run(file: Path, config_path: Path | None, trace: bool) -> None:
-    config = load_config(config_path)
-    with file.open("rb") as f:
-        program = binary.read(f)
+def run(file: Path, config_path: Path, trace: bool) -> None:
+    config = Config.from_yaml(config_path)
+    program = binary.read(file)
 
     out = Output()
 

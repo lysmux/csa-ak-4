@@ -88,7 +88,7 @@ class CompiledProgram:
         lines.append("\nData:")
         for index, cell in enumerate(self.data):
             addr = index * WORD_BYTES
-            lines.append(f"  0x{addr:04x} - {cell & 0xFFFFFFFF:#010x} - .word {cell:#010x}")
+            lines.append(f"  0x{addr:04x} - {cell & 0xFFFFFFFF:#010x}")
         lines.append("\nInterrupt handlers:")
         for vec, a in self.interrupt_handlers.items():
             lines.append(f"  vector {vec} -> {a:#06x}")

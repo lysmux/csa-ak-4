@@ -1,9 +1,8 @@
 from collections.abc import Callable
 from pathlib import Path
+from typing import Self
 
 import click
-
-from app.config import Config
 
 _INDENT_SIZE = 4
 
@@ -12,14 +11,14 @@ class Output:
     def __init__(self) -> None:
         self._started = False
 
-    def section(self, title: str) -> "Output":
+    def section(self, title: str) -> Self:
         if self._started:
             click.echo()
         self._started = True
         click.echo(click.style(title, bold=True, fg="blue"))
         return self
 
-    def line(self, content: str) -> "Output":
+    def line(self, content: str) -> Self:
         click.echo(" " * _INDENT_SIZE + content)
         return self
 
@@ -29,15 +28,11 @@ class Output:
         *,
         key_fmt: Callable[[str], str] = str,
         val_fmt: Callable[[str], str] = str,
-    ) -> "Output":
+    ) -> Self:
         width = max(len(k) for k, _ in rows)
         for key, val in rows:
             self.line(f"{key_fmt(key.ljust(width))} │ {val_fmt(val)}")
         return self
-
-
-def load_config(path: Path | None) -> Config:
-    return Config.from_yaml(path) if path else Config()
 
 
 ReadableFile = click.Path(

@@ -1,8 +1,8 @@
-from pathlib import Path
 from typing import Literal
 
-import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator
+
+from app.utils import YamlBaseModel
 
 
 class MemorySize(BaseModel):
@@ -79,7 +79,7 @@ class IOConfig(BaseModel):
         return self
 
 
-class Config(BaseModel):
+class Config(YamlBaseModel):
     limit: int = Field(default=1000, gt=0)
     memory_size: MemorySize = Field(default_factory=MemorySize)
     stack_size: StackSize = Field(default_factory=StackSize)
@@ -93,8 +93,3 @@ class Config(BaseModel):
                     msg = f"input {name!r}: tick {tick} exceeds simulation limit {self.limit}"
                     raise ValueError(msg)
         return self
-
-    @classmethod
-    def from_yaml(cls, path: Path) -> "Config":
-        raw = yaml.safe_load(path.read_text())
-        return cls.model_validate(raw)
