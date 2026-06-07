@@ -41,7 +41,8 @@ def run_golden(
     trace: list[str] = []
 
     def on_tick(cu: ControlUnit) -> None:
-        trace.append(click.unstyle(trace_line(cu)))
+        if len(trace) < max_trace:
+            trace.append(click.unstyle(trace_line(cu)))
 
     result = simulate(program, config, on_tick=on_tick)
     return result, trace

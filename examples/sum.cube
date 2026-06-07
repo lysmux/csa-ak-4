@@ -1,6 +1,6 @@
 var a: long = 1 + 2 * 3;
-var b: int = 2;
+var b: int = 0x10;
 
 fun main() {
-    print(debug, a / b);
+    print(debug, a + b);
 }

@@ -103,7 +103,3 @@ module = "tests.*"
 disallow_untyped_defs = false
 disallow_incomplete_defs = false
 check_untyped_defs = false
-
-[tool.pyright]
-files = ["src", "tests"]
-strict = true

@@ -32,6 +32,6 @@ fun main(): int {
         }
         i++;
     }
-    print(max_pal);
+    print(debug, max_pal);
     return max_pal;
 }
