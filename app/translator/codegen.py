@@ -7,6 +7,7 @@ from app.config import InputDeviceConfig, OutputDeviceConfig
 from app.isa.consts import INSTR_BYTES, WORD_BYTES
 from app.isa.instruction import Instruction
 from app.isa.opcode import Opcode
+from app.translator.builtins import BUILTINS
 from app.translator.nodes import (
     ArrayDecl,
     AssignStmt,
@@ -37,8 +38,6 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from app.translator.nodes import Expr
-
-_BUILTINS = frozenset({"print", "read", "enable_interrupts", "disable_interrupts"})
 
 # Comparison op → conditional jump opcode for the TRUE branch
 _CMP_JUMP: dict[Op, Opcode] = {
@@ -645,70 +644,69 @@ class CodeGen:
                 raise CodeGenError(msg)
 
     def _gen_call(self, call: Call) -> str:
-        match call:
-            case Call(name="read", args=args):
-                if args and isinstance(args[0], Ident) and args[0].name in self._input_devices:
-                    if len(args) != 1:
-                        msg = "read expects 0 or 1 device-label arg"
-                        raise CodeGenError(msg)
-                    dev = self._input_devices[args[0].name]
-                    self._emit(Opcode.LOAD, dev.address)
-                elif not args:
-                    if self._current_interrupt_vector is None:
-                        msg = "read() without a label can only be used inside an interrupt handler"
-                        raise CodeGenError(msg)
-                    vec_dev = self._inputs_by_vector.get(self._current_interrupt_vector)
-                    if vec_dev is None:
-                        msg = f"no input device configured for interrupt vector {self._current_interrupt_vector}"
-                        raise CodeGenError(msg)
-                    self._emit(Opcode.LOAD, vec_dev.address)
-                else:
-                    msg = "read expects 0 or 1 device-label arg"
-                    raise CodeGenError(msg)
-                return INT
+        builtin = BUILTINS.get(call.name)
+        if builtin is not None:
+            return builtin.emit(self, call.args)
+        return self._gen_user_call(call.name, call.args)
 
-            case Call(name="enable_interrupts"):
-                self._emit(Opcode.EI)
-                self._emit(Opcode.PUSH, 0)
-                return INT
-
-            case Call(name="disable_interrupts"):
-                self._emit(Opcode.DI)
-                self._emit(Opcode.PUSH, 0)
-                return INT
-
-            case Call(name="print", args=args):
-                device, payload = self._resolve_output_device(args)
-                for arg in payload:
-                    if isinstance(arg, String):
-                        addr = self._alloc_string(arg.value)
-                        self._emit_cstr_loop(addr, device.address)
-                    elif self._expr_type(arg) == LONG:
-                        self._gen_as(arg, LONG)
-                        self._emit(Opcode.STORE, device.address)
-                        self._emit(Opcode.STORE, device.address)
-                    else:
-                        self._gen_as(arg, INT)
-                        self._emit(Opcode.STORE, device.address)
-                self._emit(Opcode.PUSH, 0)
-                return INT
-
-            case Call(name=name, args=args):
-                if name in self._interrupt_names:
-                    msg = f"interrupt handler '{name}' cannot be called directly"
-                    raise CodeGenError(msg)
-                lbl = self._fun_labels.get(name)
-                if lbl is None:
-                    msg = f"undefined function: {name!r}"
-                    raise CodeGenError(msg)
-                for arg in args:
-                    self._gen_as(arg, INT)
-                self._emit_jump(Opcode.CALL, lbl)
-                if not self._fun_returns.get(name, False):
-                    self._emit(Opcode.PUSH, 0)  # dummy for void functions
-                    return INT
-                return self._fun_return_types.get(name) or INT
-
-            case _:
-                msg = f"unhandled call: {call!r}"
+    def gen_read(self, args: Sequence[Expr]) -> str:
+        if args and isinstance(args[0], Ident) and args[0].name in self._input_devices:
+            if len(args) != 1:
+                msg = "read expects 0 or 1 device-label arg"
                 raise CodeGenError(msg)
+            self._emit(Opcode.LOAD, self._input_devices[args[0].name].address)
+        elif not args:
+            if self._current_interrupt_vector is None:
+                msg = "read() without a label can only be used inside an interrupt handler"
+                raise CodeGenError(msg)
+            vec_dev = self._inputs_by_vector.get(self._current_interrupt_vector)
+            if vec_dev is None:
+                msg = f"no input device configured for interrupt vector {self._current_interrupt_vector}"
+                raise CodeGenError(msg)
+            self._emit(Opcode.LOAD, vec_dev.address)
+        else:
+            msg = "read expects 0 or 1 device-label arg"
+            raise CodeGenError(msg)
+        return INT
+
+    def gen_enable_interrupts(self) -> str:
+        self._emit(Opcode.EI)
+        self._emit(Opcode.PUSH, 0)
+        return INT
+
+    def gen_disable_interrupts(self) -> str:
+        self._emit(Opcode.DI)
+        self._emit(Opcode.PUSH, 0)
+        return INT
+
+    def gen_print(self, args: Sequence[Expr]) -> str:
+        device, payload = self._resolve_output_device(args)
+        for arg in payload:
+            if isinstance(arg, String):
+                addr = self._alloc_string(arg.value)
+                self._emit_cstr_loop(addr, device.address)
+            elif self._expr_type(arg) == LONG:
+                self._gen_as(arg, LONG)
+                self._emit(Opcode.STORE, device.address)
+                self._emit(Opcode.STORE, device.address)
+            else:
+                self._gen_as(arg, INT)
+                self._emit(Opcode.STORE, device.address)
+        self._emit(Opcode.PUSH, 0)
+        return INT
+
+    def _gen_user_call(self, name: str, args: Sequence[Expr]) -> str:
+        if name in self._interrupt_names:
+            msg = f"interrupt handler '{name}' cannot be called directly"
+            raise CodeGenError(msg)
+        lbl = self._fun_labels.get(name)
+        if lbl is None:
+            msg = f"undefined function: {name!r}"
+            raise CodeGenError(msg)
+        for arg in args:
+            self._gen_as(arg, INT)
+        self._emit_jump(Opcode.CALL, lbl)
+        if not self._fun_returns.get(name, False):
+            self._emit(Opcode.PUSH, 0)  # dummy for void functions
+            return INT
+        return self._fun_return_types.get(name) or INT

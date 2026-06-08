@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import StrEnum
 from typing import Never
 
+from app.translator.builtins import BUILTINS, LABELS, Args, Param
 from app.translator.nodes import (
     ArrayDecl,
     AssignStmt,
@@ -13,6 +13,7 @@ from app.translator.nodes import (
     Bool,
     Call,
     ConstDecl,
+    Expr,
     ExprStmt,
     FunDecl,
     Ident,
@@ -30,41 +31,12 @@ from app.translator.nodes import (
     VarDecl,
     WhileStmt,
 )
+from app.translator.types import NUMERIC, Type
 
-
-class Type(StrEnum):
-    INT = "int"
-    LONG = "long"
-    BOOL = "bool"
-    STRING = "string"
-    ARRAY = "array"
-    FUN = "fun"
-    INTERRUPT = "interrupt"
-    OUTPUT_DEVICE = "output_device"
-    INPUT_DEVICE = "input_device"
-
-
-NUMERIC = {Type.INT, Type.LONG}
 ARITH_OPS = {Op.PLUS, Op.MINUS, Op.STAR, Op.SLASH}
 CMP_OPS = {Op.EQUAL, Op.NOT_EQUAL, Op.LESS_THAN, Op.GREATER_THAN, Op.LESS_THAN_OR_EQUAL, Op.GREATER_THAN_OR_EQUAL}
 LOGIC_OPS = {Op.AND, Op.OR, Op.XOR}
 INCR_OPS = {Op.INCREMENT, Op.DECREMENT}
-
-PRINTABLE = {Type.STRING, Type.INT, Type.LONG, Type.BOOL}
-
-
-@dataclass(frozen=True)
-class BuiltinSpec:
-    params: list[Type] | None
-    return_type: Type | None
-
-
-BUILTINS: dict[str, BuiltinSpec] = {
-    "print": BuiltinSpec(params=None, return_type=None),
-    "read": BuiltinSpec(params=None, return_type=Type.INT),
-    "enable_interrupts": BuiltinSpec(params=[], return_type=None),
-    "disable_interrupts": BuiltinSpec(params=[], return_type=None),
-}
 
 
 @dataclass
@@ -272,55 +244,14 @@ class Analyzer:
                 return sym.type_name if sym else None
 
             case Call(name=name, args=args):
-                spec = BUILTINS.get(name)
-                if spec is not None:
-                    if name == "print":
-                        payload = args
-                        if args and isinstance(args[0], Ident):
-                            first_sym = self._scope.resolve(args[0].name)
-                            if first_sym is not None and first_sym.type_name == Type.OUTPUT_DEVICE:
-                                payload = args[1:]
-
-                        for i, arg in enumerate(payload):
-                            arg_type = self._visit(arg)
-                            if arg_type is not None and arg_type not in PRINTABLE:
-                                self.error(
-                                    f"argument {i + 1}: invalid type '{arg_type}', expected one of {sorted(PRINTABLE)}"
-                                )
-
-                    elif name == "read":
-                        if len(args) == 0:
-                            if not self._in_interrupt_handler:
-                                self.error("read() without a label can only be used in an interrupt handler")
-                        elif len(args) == 1 and isinstance(args[0], Ident):
-                            first_sym = self._scope.resolve(args[0].name)
-                            if first_sym is None or first_sym.type_name != Type.INPUT_DEVICE:
-                                self.error(f"'{args[0].name}' is not an input device label")
-                        else:
-                            self.error("read expects 0 or 1 device-label arg")
-
-                    elif spec.params is not None:
-                        if len(args) != len(spec.params):
-                            self.error(f"'{name}' expects {len(spec.params)} arg(s), got {len(args)}")
-                        for i, (arg, expected_type) in enumerate(zip(args, spec.params, strict=True)):
-                            arg_type = self._visit(arg)
-                            if arg_type is not None and arg_type != expected_type:
-                                self.error(f"'{name}' argument {i + 1}: expected '{expected_type}', got '{arg_type}'")
-
-                    return spec.return_type
-
+                builtin = BUILTINS.get(name)
+                if builtin is None:
+                    return self._check_user_call(name, args)
+                if name == "read":
+                    self._check_read(builtin.overload, args)
                 else:
-                    fun_sym: Symbol | None = self._resolve(name)
-                    if fun_sym is not None:
-                        if fun_sym.type_name == Type.INTERRUPT:
-                            self.error(f"interrupt handler '{name}' cannot be called directly")
-                        elif fun_sym.type_name != Type.FUN:
-                            self.error(f"'{name}' is not a function")
-                        elif fun_sym.params is not None and len(args) != len(fun_sym.params):
-                            self.error(f"'{name}' expects {len(fun_sym.params)} arg(s), got {len(args)}")
-                    for arg in args:
-                        self._visit(arg)
-                    return fun_sym.return_type if fun_sym else None
+                    self._check_overload(name, builtin.overload, args)
+                return builtin.return_type
 
             case IndexExpr(name=name, index=index):
                 sym = self._resolve(name)
@@ -353,6 +284,67 @@ class Analyzer:
                 return Type.BOOL
 
         return None
+
+    def _check_overload(self, name: str, overload: list[Args], args: list[Expr]) -> None:
+        chosen = self._select_overload(overload, args)
+        if chosen is None:
+            self.error(f"'{name}' got {len(args)} argument(s); no matching overload")
+        for i, arg in enumerate(args):
+            param = chosen.params[min(i, len(chosen.params) - 1)] if chosen.variadic else chosen.params[i]
+            if param in LABELS:
+                continue  # already matched structurally; visiting a device label raises
+            allowed = param if isinstance(param, frozenset) else {param}
+            arg_type = self._visit(arg)
+            if arg_type is not None and arg_type not in allowed:
+                self.error(f"argument {i + 1}: invalid type '{arg_type}', expected one of {sorted(allowed)}")
+
+    def _select_overload(self, overload: list[Args], args: list[Expr]) -> Args | None:
+        # More specific forms (a leading device label) win over the label-less form.
+        for form in sorted(overload, key=lambda f: bool(f.params) and f.params[0] in LABELS, reverse=True):
+            if self._overload_matches(form, args):
+                return form
+        return None
+
+    def _overload_matches(self, form: Args, args: list[Expr]) -> bool:
+        if form.variadic:
+            if len(args) < len(form.params) - 1:
+                return False
+        elif len(args) != len(form.params):
+            return False
+        return all(
+            self._is_device_label(arg, param) for param, arg in zip(form.params, args, strict=False) if param in LABELS
+        )
+
+    def _is_device_label(self, arg: Expr, device: Param) -> bool:
+        if not isinstance(arg, Ident):
+            return False
+        sym = self._scope.resolve(arg.name)
+        return sym is not None and sym.type_name == device
+
+    def _check_read(self, overload: list[Args], args: list[Expr]) -> None:
+        label = next(p for form in overload for p in form.params if p in LABELS)
+        if not args:
+            if not self._in_interrupt_handler:
+                self.error("read() without a label can only be used in an interrupt handler")
+        elif len(args) == 1 and self._is_device_label(args[0], label):
+            return
+        elif len(args) == 1 and isinstance(args[0], Ident):
+            self.error(f"'{args[0].name}' is not an input device label")
+        else:
+            self.error("read expects 0 or 1 device-label arg")
+
+    def _check_user_call(self, name: str, args: list[Expr]) -> Type | None:
+        sym = self._resolve(name)
+        if sym is not None:
+            if sym.type_name == Type.INTERRUPT:
+                self.error(f"interrupt handler '{name}' cannot be called directly")
+            elif sym.type_name != Type.FUN:
+                self.error(f"'{name}' is not a function")
+            elif sym.params is not None and len(args) != len(sym.params):
+                self.error(f"'{name}' expects {len(sym.params)} arg(s), got {len(args)}")
+        for arg in args:
+            self._visit(arg)
+        return sym.return_type if sym else None
 
     def _check_compat(self, declared: Type, actual: Type | None, label: str) -> None:
         if actual is None or declared == actual:
