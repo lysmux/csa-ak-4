@@ -18,15 +18,15 @@ class Device:
 
 
 class Output(Device):
-    def __init__(self, format: Literal["string", "raw"]) -> None:
-        self.format = format
+    def __init__(self, mode: Literal["string", "raw"]) -> None:
+        self.mode = mode
         self.buffer: list[int] = []
 
     def write(self, value: int) -> None:
         self.buffer.append(value)
 
     def as_string(self) -> str:
-        if self.format == "string":
+        if self.mode == "string":
             return "".join(map(chr, self.buffer))
         return " ".join(str(v) for v in self.buffer)
 

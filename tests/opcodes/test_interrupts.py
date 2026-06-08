@@ -6,7 +6,7 @@ from app.simulation.data_path import DataPath
 from app.simulation.io import Device, Input, Output
 from app.simulation.memory import DataMemory, InstrMemory
 from app.simulation.runner import run_control_unit
-from app.simulation.stack import Stack
+from app.simulation.stack import DataStack, ReturnStack
 
 from tests.shared import read_word
 
@@ -23,11 +23,11 @@ def _run(
     instr_mem = InstrMemory(512)
     instr_mem.fill([i.to_binary() for i in instructions])
     data_mem = DataMemory(256)
-    data_path = DataPath(memory=data_mem, stack=Stack(64), io_map=io_map or {})
+    data_path = DataPath(memory=data_mem, stack=DataStack(64), io_map=io_map or {})
     cu = ControlUnit(
         data_path=data_path,
         instr_memory=instr_mem,
-        return_stack=Stack(64),
+        return_stack=ReturnStack(64),
         vector_table=vector_table or {},
     )
     run_control_unit(cu, limit=limit)
@@ -44,7 +44,7 @@ def addr(index: int) -> int:
 
 
 def test_output_raw_format():
-    out = Output(format="raw")
+    out = Output(mode="raw")
     out.write(65)
     out.write(66)
     assert out.buffer == [65, 66]
@@ -52,7 +52,7 @@ def test_output_raw_format():
 
 
 def test_output_string_format():
-    out = Output(format="string")
+    out = Output(mode="string")
     out.write(ord("H"))
     out.write(ord("i"))
     assert out.as_string() == "Hi"
@@ -72,7 +72,7 @@ def test_input_schedule_and_read_clears_port():
 
 
 def test_store_routes_to_output_device():
-    out = Output(format="raw")
+    out = Output(mode="raw")
     instructions = [
         Instruction(Opcode.PUSH, 0x41),
         Instruction(Opcode.STORE, _IN_ADDR),

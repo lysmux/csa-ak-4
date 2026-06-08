@@ -3,40 +3,15 @@ from app.isa.opcode import Opcode
 from app.simulation.alu import Alu
 from app.simulation.io import Device
 from app.simulation.memory import Memory
-from app.simulation.mux import ARMux, DSPMux, DStackMux
-from app.simulation.stack import Stack
-
-
-def stack_push(stack: Stack, value: int) -> None:
-    if stack.sp >= 2:
-        stack.write_mem(stack.sp - 2, stack.nos)
-    stack.nos = stack.tos if stack.sp >= 1 else 0
-    stack.tos = value
-    stack.latch_sp(DSPMux.INC)
-
-
-def stack_pop_addr(stack: Stack) -> int:
-    """Synchronous read, address phase: drop the top cell and present the fill address.
-
-    Returns the popped value (the old TOS). NOS still holds stale data until the
-    data phase latches the refilled value.
-    """
-    value = stack.tos
-    stack.latch_sp(DSPMux.DEC)
-    stack.tos = stack.nos if stack.sp >= 1 else 0
-    return value
-
-
-def stack_pop_data(stack: Stack) -> None:
-    """Synchronous read, data phase: latch the refilled NOS from stack memory."""
-    stack.nos = stack.read_mem(stack.sp - 2) if stack.sp >= 2 else 0
+from app.simulation.mux import ARMux, DSPMux, NosMux, TosMux
+from app.simulation.stack import DataStack
 
 
 class DataPath:
     def __init__(
         self,
         memory: Memory,
-        stack: Stack,
+        stack: DataStack,
         io_map: dict[int, Device],
     ) -> None:
         self.memory = memory
@@ -48,9 +23,9 @@ class DataPath:
 
         self._ar = 0
 
-        self._ir_operand_in = 0
+        self._operand = 0
         self._r_top_in = 0
-        self._alu_out = 0
+        self.alu_out = 0
         self._mem_out = 0
 
     @property
@@ -61,59 +36,75 @@ class DataPath:
     def flags(self, value: int) -> None:
         self._flags = Flag(value)
 
-    def set_ir_operand(self, value: int) -> None:
-        self._ir_operand_in = value
+    @property
+    def ar(self) -> int:
+        return self._ar
+
+    def set_operand(self, value: int) -> None:
+        self._operand = value
 
     def set_r_top(self, value: int) -> None:
         self._r_top_in = value
 
     def latch_ar(self, mux: ARMux) -> None:
         match mux:
-            case ARMux.IR_OPERAND:
-                self._ar = self._ir_operand_in
+            case ARMux.OPERAND:
+                self._ar = self._operand
             case ARMux.TOS:
                 self._ar = self.stack.tos
 
     def perform_alu(self, opcode: Opcode, left: int, right: int = 0, carry_in: int = 0) -> int:
         result = self._alu.perform(opcode, left, right, carry_in)
         self._flags = result.flags
-        self._alu_out = result.value
+        self.alu_out = result.value
         return result.value
 
     def is_alu_binary_opcode(self, opcode: Opcode) -> bool:
-        return opcode in self._alu.BINARY_OPERATIONS.keys()
+        return self._alu.is_binary(opcode)
 
     def is_alu_unary_opcode(self, opcode: Opcode) -> bool:
-        return opcode in self._alu.UNARY_OPERATIONS.keys()
+        return self._alu.is_unary(opcode)
 
-    def push(self, mux: DStackMux) -> None:
-        value = self._select_d_stack_source(mux)
-        stack_push(self.stack, value)
-        self._flags = Flag.nz(value)
-
-    def push_raw(self, mux: DStackMux) -> None:
-        stack_push(self.stack, self._select_d_stack_source(mux))
-
-    def pop_addr(self) -> int:
-        return stack_pop_addr(self.stack)
-
-    def pop_data(self) -> None:
-        stack_pop_data(self.stack)
-
-    def _select_d_stack_source(self, mux: DStackMux) -> int:
+    def _tos_source(self, mux: TosMux) -> int:
         match mux:
-            case DStackMux.IR_OPERAND:
-                return self._ir_operand_in
-            case DStackMux.TOS:
-                return self.stack.tos
-            case DStackMux.NOS:
+            case TosMux.OPERAND:
+                return self._operand
+            case TosMux.NOS:
                 return self.stack.nos
-            case DStackMux.ALU:
-                return self._alu_out
-            case DStackMux.MEMORY:
+            case TosMux.ALU:
+                return self.alu_out
+            case TosMux.MEMORY:
                 return self._mem_out
-            case DStackMux.R_STACK:
+            case TosMux.R_STACK:
                 return self._r_top_in
+
+    def latch_tos(self, mux: TosMux) -> None:
+        self.stack.tos = self._tos_source(mux)
+
+    def latch_nos(self, mux: NosMux) -> None:
+        match mux:
+            case NosMux.TOS:
+                value = self.stack.tos
+            case NosMux.D_STACK:
+                value = self.stack.read()
+        self.stack.nos = value
+
+    def push(self, mux: TosMux) -> None:
+        value = self._tos_source(mux)
+        self.stack.write_nos()
+        self.stack.latch_sp(DSPMux.INC)
+        self.stack.nos = self.stack.tos
+        self.stack.tos = value
+        self.set_nz_from_tos()
+
+    def pop(self) -> None:
+        self.latch_tos(TosMux.NOS)
+        self.latch_nos(NosMux.D_STACK)
+
+    def dup(self) -> None:
+        self.stack.write_nos()
+        self.stack.latch_sp(DSPMux.INC)
+        self.stack.nos = self.stack.tos
 
     def cmp(self) -> None:
         result = self._alu.perform(Opcode.SUB, self.stack.nos, self.stack.tos)

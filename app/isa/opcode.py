@@ -69,3 +69,38 @@ class Opcode(IntEnum):
     EI = 0x70
     DI = 0x71
     RTI = 0x72
+
+
+BRANCH_OPCODES = {
+    Opcode.JMP,
+    Opcode.JZ,
+    Opcode.JNZ,
+    Opcode.JPL,
+    Opcode.JMI,
+    Opcode.JGE,
+    Opcode.JL,
+    Opcode.JG,
+    Opcode.JLE,
+    Opcode.JC,
+    Opcode.JNC,
+    Opcode.JV,
+    Opcode.JNV,
+}
+ONE_CYCLE_OPCODES = {
+    Opcode.NOP,
+    Opcode.PUSH,
+    Opcode.DUP,
+    Opcode.SWAP,
+    Opcode.OVER,
+    Opcode.EI,
+    Opcode.DI,
+    Opcode.CMP,
+    Opcode.I2L,
+    Opcode.INC,
+    Opcode.DEC,
+    Opcode.NEG,
+    Opcode.NOT,
+    Opcode.SHL,
+    Opcode.SHR,
+    *BRANCH_OPCODES,
+}

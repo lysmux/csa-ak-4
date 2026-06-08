@@ -11,11 +11,11 @@ stack_size:
 io:
   outputs:
     default:
-      format: string
+      mode: string
       address: 0x222
       default: true
     debug:
-      format: raw
+      mode: raw
       address: 0x224
       default: false
   inputs:

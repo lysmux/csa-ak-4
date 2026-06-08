@@ -8,4 +8,3 @@ class State(StrEnum):
     INTERRUPT = auto()
     FETCH = auto()
     EXECUTE = auto()
-    DONE = auto()

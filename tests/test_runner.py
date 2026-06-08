@@ -11,7 +11,7 @@ _OUT_ADDR = 0x222
 def _config(limit: int = 1000) -> Config:
     return Config(
         limit=limit,
-        io=IOConfig(outputs={"out": OutputDeviceConfig(address=_OUT_ADDR, format="raw", default=True)}),
+        io=IOConfig(outputs={"out": OutputDeviceConfig(address=_OUT_ADDR, mode="raw", default=True)}),
     )
 
 

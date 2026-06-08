@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -11,7 +9,7 @@ from app.simulation.control_unit import ControlUnit
 from app.simulation.data_path import DataPath
 from app.simulation.io import Device, Input, Output
 from app.simulation.memory import DataMemory, InstrMemory
-from app.simulation.stack import Stack
+from app.simulation.stack import DataStack, ReturnStack
 from app.translator.codegen import CompiledProgram
 
 
@@ -39,7 +37,7 @@ def _build_io_devices(config: IOConfig) -> IODevices:
     io_map: dict[int, Device] = {}
 
     for name, cfg in config.outputs.items():
-        output = Output(format=cfg.format)
+        output = Output(mode=cfg.mode)
         outputs[name] = output
         io_map[cfg.address] = output
 
@@ -78,14 +76,14 @@ def simulate(
 
     data_path = DataPath(
         memory=data_memory,
-        stack=Stack(config.stack_size.data),
+        stack=DataStack(config.stack_size.data),
         io_map=io_devices.io_map,
     )
 
     cu = ControlUnit(
         data_path=data_path,
         instr_memory=instr_memory,
-        return_stack=Stack(config.stack_size.ret),
+        return_stack=ReturnStack(config.stack_size.ret),
         vector_table=program.interrupt_handlers,
     )
 

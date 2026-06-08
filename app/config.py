@@ -16,7 +16,7 @@ class StackSize(BaseModel):
 
 
 class OutputDeviceConfig(BaseModel):
-    format: Literal["string", "raw"] = "string"
+    mode: Literal["string", "raw"] = "string"
     address: int
     default: bool = False
 

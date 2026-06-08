@@ -1,7 +1,10 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from app.isa.consts import MAX_SIGNED, MIN_SIGNED, SIGN_BIT, WORD_MASK, WORD_WIDTH
+from app.isa.consts import (
+    DWORD_WIDTH,
+    WORD_WIDTH,
+)
 from app.isa.flag import Flag
 from app.isa.opcode import Opcode
 
@@ -15,66 +18,92 @@ class AluResult:
     flags: Flag
 
 
-def _signed(value: int) -> int:
-    value &= WORD_MASK
-    return value - (1 << WORD_WIDTH) if value & SIGN_BIT else value
+@dataclass(frozen=True)
+class NumberFormat:
+    width: int
+
+    @property
+    def mask(self) -> int:
+        return (1 << self.width) - 1
+
+    @property
+    def sign_bit(self) -> int:
+        return 1 << (self.width - 1)
+
+    @property
+    def min_signed(self) -> int:
+        return -(1 << (self.width - 1))
+
+    @property
+    def max_signed(self) -> int:
+        return (1 << (self.width - 1)) - 1
+
+    def normalize(self, value: int) -> int:
+        return value & self.mask
+
+    def signed(self, value: int) -> int:
+        value = self.normalize(value)
+        return value - (1 << self.width) if value & self.sign_bit else value
+
+    def nz_flags(self, value: int) -> Flag:
+        value = self.normalize(value)
+        flags = Flag(0)
+
+        if value == 0:
+            flags |= Flag.Z
+        if value & self.sign_bit:
+            flags |= Flag.N
+
+        return flags
+
+    def is_signed_overflow(self, value: int) -> bool:
+        return value < self.min_signed or value > self.max_signed
+
+
+WORD = NumberFormat(WORD_WIDTH)
+DWORD = NumberFormat(DWORD_WIDTH)
 
 
 def _trunc_div(a: int, b: int) -> int:
-    q, r = divmod(a, b)
-    if r != 0 and (a < 0) != (b < 0):
-        q += 1
-    return q
+    quotient, remainder = divmod(a, b)
+
+    if remainder != 0 and (a < 0) != (b < 0):
+        quotient += 1
+
+    return quotient
 
 
-DWORD_WIDTH = 2 * WORD_WIDTH
-DWORD_MASK = (1 << DWORD_WIDTH) - 1
-DWORD_SIGN_BIT = 1 << (DWORD_WIDTH - 1)
-DWORD_MAX_SIGNED = (1 << (DWORD_WIDTH - 1)) - 1
-DWORD_MIN_SIGNED = -(1 << (DWORD_WIDTH - 1))
+def dword_mul(a: int, b: int) -> AluResult:
+    signed_product = DWORD.signed(a) * DWORD.signed(b)
+    value = DWORD.normalize(signed_product)
+    flags = DWORD.nz_flags(value)
 
-
-def _signed_dword(value: int) -> int:
-    value &= DWORD_MASK
-    return value - (1 << DWORD_WIDTH) if value & DWORD_SIGN_BIT else value
-
-
-def _flags_dword(value: int) -> Flag:
-    flags = Flag(0)
-    if value == 0:
-        flags |= Flag.Z
-    if value & DWORD_SIGN_BIT:
-        flags |= Flag.N
-    return flags
-
-
-def dword_mul(a: int, b: int) -> tuple[int, Flag]:
-    """Double-word (2*WORD_WIDTH) multiply, modelled at value level. Returns (low_dword, flags)."""
-    a &= DWORD_MASK
-    b &= DWORD_MASK
-    value = (a * b) & DWORD_MASK
-    flags = _flags_dword(value)
-    signed_product = _signed_dword(a) * _signed_dword(b)
-    if signed_product < DWORD_MIN_SIGNED or signed_product > DWORD_MAX_SIGNED:
+    if DWORD.is_signed_overflow(signed_product):
         flags |= Flag.V | Flag.C
-    return value, flags
+
+    return AluResult(value, flags)
 
 
-def dword_div(a: int, b: int) -> tuple[int, Flag]:
-    """Double-word signed truncating division, modelled at value level. Returns (quotient, flags)."""
-    value = _trunc_div(_signed_dword(a), _signed_dword(b)) & DWORD_MASK
-    flags = _flags_dword(value)
-    if _signed_dword(a) == DWORD_MIN_SIGNED and _signed_dword(b) == -1:
+def dword_div(a: int, b: int) -> AluResult:
+    left = DWORD.signed(a)
+    right = DWORD.signed(b)
+
+    value = DWORD.normalize(_trunc_div(left, right))
+    flags = DWORD.nz_flags(value)
+
+    if left == DWORD.min_signed and right == -1:
         flags |= Flag.V
-    return value, flags
+
+    return AluResult(value, flags)
 
 
 class Alu:
     BINARY_OPERATIONS: dict[Opcode, BinaryOp] = {
         Opcode.ADD: lambda a, b: a + b,
         Opcode.SUB: lambda a, b: a - b,
+        Opcode.CMP: lambda a, b: a - b,
         Opcode.MUL: lambda a, b: a * b,
-        Opcode.DIV: lambda a, b: _trunc_div(_signed(a), _signed(b)),
+        Opcode.DIV: lambda a, b: _trunc_div(WORD.signed(a), WORD.signed(b)),
         Opcode.AND: lambda a, b: a & b,
         Opcode.OR: lambda a, b: a | b,
         Opcode.XOR: lambda a, b: a ^ b,
@@ -83,93 +112,145 @@ class Alu:
     UNARY_OPERATIONS: dict[Opcode, UnaryOp] = {
         Opcode.INC: lambda a: a + 1,
         Opcode.DEC: lambda a: a - 1,
-        Opcode.NEG: lambda a: -_signed(a),
+        Opcode.NEG: lambda a: -WORD.signed(a),
         Opcode.NOT: lambda a: ~a,
         Opcode.SHL: lambda a: a << 1,
         Opcode.SHR: lambda a: a >> 1,
+        Opcode.I2L: lambda a: WORD.mask if a & WORD.sign_bit else 0,
     }
 
-    def perform(self, opcode: Opcode, left: int, right: int = 0, carry_in: int = 0) -> AluResult:
-        if opcode in self.BINARY_OPERATIONS:
+    CARRY_BINARY_OPERATIONS = {
+        Opcode.ADD,
+        Opcode.SUB,
+        Opcode.CMP,
+    }
+
+    def is_binary(self, opcode: Opcode) -> bool:
+        return opcode in self.BINARY_OPERATIONS
+
+    def is_unary(self, opcode: Opcode) -> bool:
+        return opcode in self.UNARY_OPERATIONS
+
+    def perform(
+        self,
+        opcode: Opcode,
+        left: int,
+        right: int = 0,
+        carry_in: int = 0,
+    ) -> AluResult:
+        if self.is_binary(opcode):
             return self.perform_binary(opcode, left, right, carry_in)
-        if opcode in self.UNARY_OPERATIONS:
-            return self.perform_unary(opcode, left, carry_in)
+
+        if self.is_unary(opcode):
+            return self.perform_unary(opcode, left)
 
         msg = f"{opcode.name} is not an ALU operation"
         raise ValueError(msg)
 
-    def perform_binary(self, opcode: Opcode, left: int, right: int, carry_in: int = 0) -> AluResult:
+    def perform_binary(
+        self,
+        opcode: Opcode,
+        left: int,
+        right: int,
+        carry_in: int = 0,
+    ) -> AluResult:
         operation = self.BINARY_OPERATIONS.get(opcode)
+
         if operation is None:
             msg = f"{opcode.name} is not a binary ALU operation"
             raise ValueError(msg)
 
-        left &= WORD_MASK
-        right &= WORD_MASK
-        value = (operation(left, right) + carry_in) & WORD_MASK
-        flags = self._flags_binary(opcode, left, right, value, carry_in)
+        left = WORD.normalize(left)
+        right = WORD.normalize(right)
+
+        effective_carry = carry_in if opcode in self.CARRY_BINARY_OPERATIONS else 0
+        raw_value = operation(left, right) + effective_carry
+        value = WORD.normalize(raw_value)
+
+        flags = self._flags_binary(
+            opcode=opcode,
+            left=left,
+            right=right,
+            value=value,
+            carry_in=effective_carry,
+        )
+
         return AluResult(value, flags)
 
-    def perform_unary(self, opcode: Opcode, operand: int, carry_in: int = 0) -> AluResult:
+    def perform_unary(self, opcode: Opcode, operand: int) -> AluResult:
         operation = self.UNARY_OPERATIONS.get(opcode)
+
         if operation is None:
             msg = f"{opcode.name} is not a unary ALU operation"
             raise ValueError(msg)
 
-        operand &= WORD_MASK
-        value = (operation(operand) + carry_in) & WORD_MASK
+        operand = WORD.normalize(operand)
+        value = WORD.normalize(operation(operand))
         flags = self._flags_unary(opcode, operand, value)
+
         return AluResult(value, flags)
 
     @staticmethod
-    def _flags_binary(opcode: Opcode, a: int, b: int, value: int, carry_in: int = 0) -> Flag:
-        flags = Flag.nz(value)
+    def _flags_binary(
+        opcode: Opcode,
+        left: int,
+        right: int,
+        value: int,
+        carry_in: int = 0,
+    ) -> Flag:
+        flags = WORD.nz_flags(value)
 
         if opcode == Opcode.ADD:
-            if a + b + carry_in > WORD_MASK:
+            if left + right + carry_in > WORD.mask:
                 flags |= Flag.C
-            if (a ^ value) & (b ^ value) & SIGN_BIT:
+            if (left ^ value) & (right ^ value) & WORD.sign_bit:
                 flags |= Flag.V
+
         elif opcode in (Opcode.SUB, Opcode.CMP):
-            # carry_in carries a negative borrow (-1) for subtract-with-borrow (SBB).
-            if a - b + carry_in < 0:
+            if left - right + carry_in < 0:
                 flags |= Flag.C
-            if (a ^ b) & (a ^ value) & SIGN_BIT:
+            if (left ^ right) & (left ^ value) & WORD.sign_bit:
                 flags |= Flag.V
+
         elif opcode == Opcode.MUL:
-            signed_product = _signed(a) * _signed(b)
-            if signed_product < MIN_SIGNED or signed_product > MAX_SIGNED:
+            product = WORD.signed(left) * WORD.signed(right)
+            if WORD.is_signed_overflow(product):
                 flags |= Flag.V | Flag.C
+
         elif opcode == Opcode.DIV:
-            if _signed(a) == MIN_SIGNED and _signed(b) == -1:
+            if WORD.signed(left) == WORD.min_signed and WORD.signed(right) == -1:
                 flags |= Flag.V
 
         return flags
 
     @staticmethod
-    def _flags_unary(opcode: Opcode, a: int, value: int) -> Flag:
-        flags = Flag.nz(value)
+    def _flags_unary(opcode: Opcode, operand: int, value: int) -> Flag:
+        flags = WORD.nz_flags(value)
 
         if opcode == Opcode.INC:
-            if a == WORD_MASK:
+            if operand == WORD.mask:
                 flags |= Flag.C
-            if _signed(a) == MAX_SIGNED:
+            if WORD.signed(operand) == WORD.max_signed:
                 flags |= Flag.V
+
         elif opcode == Opcode.DEC:
-            if a == 0:
+            if operand == 0:
                 flags |= Flag.C
-            if _signed(a) == MIN_SIGNED:
+            if WORD.signed(operand) == WORD.min_signed:
                 flags |= Flag.V
+
         elif opcode == Opcode.NEG:
-            if a != 0:
+            if operand != 0:
                 flags |= Flag.C
-            if _signed(a) == MIN_SIGNED:
+            if WORD.signed(operand) == WORD.min_signed:
                 flags |= Flag.V
+
         elif opcode == Opcode.SHL:
-            if a & SIGN_BIT:
+            if operand & WORD.sign_bit:
                 flags |= Flag.C
+
         elif opcode == Opcode.SHR:
-            if a & 1:
+            if operand & 1:
                 flags |= Flag.C
 
         return flags

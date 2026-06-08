@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from enum import IntFlag
 
 from app.isa.consts import SIGN_BIT
@@ -10,7 +12,7 @@ class Flag(IntFlag):
     C = 1 << 3
 
     @classmethod
-    def nz(cls, value: int) -> "Flag":
+    def nz(cls, value: int) -> Flag:
         flags = Flag(0)
         if value == 0:
             flags |= Flag.Z
@@ -18,10 +20,5 @@ class Flag(IntFlag):
             flags |= Flag.N
         return flags
 
-    def has(self, flag: "Flag") -> bool:
+    def has(self, flag: Flag) -> bool:
         return bool(self & flag)
-
-
-class ProgramState(IntFlag):
-    IE = 1 << 0
-    IRQ = 1 << 1

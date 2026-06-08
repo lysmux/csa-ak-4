@@ -4,7 +4,7 @@ from app.simulation.control_unit import ControlUnit, CUSnapshot
 from app.simulation.data_path import DataPath
 from app.simulation.memory import DataMemory, InstrMemory
 from app.simulation.runner import run_control_unit
-from app.simulation.stack import Stack
+from app.simulation.stack import DataStack, ReturnStack
 from app.translator.analyzer import Analyzer
 from app.translator.codegen import CodeGen
 from app.translator.lexer import Lexer
@@ -27,9 +27,9 @@ def run_source(src: str) -> CUSnapshot:
     data_mem.fill(program.data)
 
     cu = ControlUnit(
-        data_path=DataPath(memory=data_mem, stack=Stack(128), io_map={}),
+        data_path=DataPath(memory=data_mem, stack=DataStack(128), io_map={}),
         instr_memory=instr_mem,
-        return_stack=Stack(128),
+        return_stack=ReturnStack(128),
     )
     run_control_unit(cu, limit=200_000)
     return cu.snapshot

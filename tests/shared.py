@@ -4,7 +4,7 @@ from app.simulation.control_unit import ControlUnit, CUSnapshot
 from app.simulation.data_path import DataPath
 from app.simulation.memory import DataMemory, InstrMemory
 from app.simulation.runner import run_control_unit
-from app.simulation.stack import Stack
+from app.simulation.stack import DataStack, ReturnStack
 
 
 def read_word(memory: bytearray, index: int) -> int:
@@ -26,14 +26,14 @@ def run_simulation(
 
     data_path = DataPath(
         memory=data_memory,
-        stack=Stack(50),
+        stack=DataStack(50),
         io_map={},
     )
 
     cu = ControlUnit(
         data_path=data_path,
         instr_memory=instr_memory,
-        return_stack=Stack(50),
+        return_stack=ReturnStack(50),
     )
 
     run_control_unit(cu)
