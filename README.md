@@ -30,6 +30,7 @@ alg | stack | harv | hw | tick | binary | trap | mem | cstr | prob1 | superscala
 - [Модель процессора](#модель-процессора)
 - [Тестирование](#тестирование)
 - [Результаты](#результаты)
+- [Verilog](verilog/README.md)
 
 ## Вариант
 
