@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -10,10 +8,9 @@ if TYPE_CHECKING:
     from app.translator.codegen import CodeGen
     from app.translator.nodes import Expr
 
-type Emit = Callable[["CodeGen", Sequence["Expr"]], str]
+type Emit = Callable[[CodeGen, Sequence[Expr]], str]
 
-# A device-label param is matched by an Ident bound to that device; a frozenset
-# is a value param matched by an expression of one of those types.
+
 type Param = Type | frozenset[Type]
 
 LABELS = frozenset({Type.OUTPUT_DEVICE, Type.INPUT_DEVICE})
@@ -22,7 +19,7 @@ LABELS = frozenset({Type.OUTPUT_DEVICE, Type.INPUT_DEVICE})
 @dataclass(frozen=True)
 class Args:
     params: tuple[Param, ...] = ()
-    variadic: bool = False  # the last param repeats zero or more times
+    variadic: bool = False
 
 
 @dataclass(frozen=True)

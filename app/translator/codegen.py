@@ -1,7 +1,5 @@
-from __future__ import annotations
-
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
 from app.config import InputDeviceConfig, OutputDeviceConfig
 from app.isa.consts import INSTR_BYTES, WORD_BYTES
@@ -16,6 +14,7 @@ from app.translator.nodes import (
     Bool,
     Call,
     ConstDecl,
+    Expr,
     ExprStmt,
     FunDecl,
     Ident,
@@ -34,12 +33,6 @@ from app.translator.nodes import (
     WhileStmt,
 )
 
-if TYPE_CHECKING:
-    from collections.abc import Sequence
-
-    from app.translator.nodes import Expr
-
-# Comparison op → conditional jump opcode for the TRUE branch
 _CMP_JUMP: dict[Op, Opcode] = {
     Op.EQUAL: Opcode.JZ,
     Op.NOT_EQUAL: Opcode.JNZ,
@@ -59,7 +52,6 @@ _ARITH_OP: dict[Op, Opcode] = {
     Op.XOR: Opcode.XOR,
 }
 
-# Arithmetic op → 64-bit double-word opcode (long operands).
 _DARITH_OP: dict[Op, Opcode] = {
     Op.PLUS: Opcode.DADD,
     Op.MINUS: Opcode.DSUB,
@@ -67,9 +59,36 @@ _DARITH_OP: dict[Op, Opcode] = {
     Op.SLASH: Opcode.DDIV,
 }
 
+_INCDEC_OP: dict[Op, Opcode] = {
+    Op.INCREMENT: Opcode.INC,
+    Op.DECREMENT: Opcode.DEC,
+}
+
+_STATIC_BINOPS: dict[Op, Callable[[int, int], int | None]] = {
+    Op.PLUS: lambda a, b: a + b,
+    Op.MINUS: lambda a, b: a - b,
+    Op.STAR: lambda a, b: a * b,
+    Op.SLASH: lambda a, b: a // b if b != 0 else None,
+    Op.AND: lambda a, b: a & b,
+    Op.OR: lambda a, b: a | b,
+    Op.XOR: lambda a, b: a ^ b,
+    Op.EQUAL: lambda a, b: int(a == b),
+    Op.NOT_EQUAL: lambda a, b: int(a != b),
+    Op.LESS_THAN: lambda a, b: int(a < b),
+    Op.GREATER_THAN: lambda a, b: int(a > b),
+    Op.LESS_THAN_OR_EQUAL: lambda a, b: int(a <= b),
+    Op.GREATER_THAN_OR_EQUAL: lambda a, b: int(a >= b),
+}
+
 INT = "int"
 LONG = "long"
 BOOL = "bool"
+
+
+@dataclass
+class FunctionInfo:
+    label: str
+    return_type: str | None
 
 
 @dataclass
@@ -124,17 +143,13 @@ class CodeGen:
         self._data: list[int] = []
         self._data_size: int = 0
         self._const_values: dict[int, int] = {}
-        self._fun_labels: dict[str, str] = {}
-        self._fun_returns: dict[str, bool] = {}
-        self._fun_return_types: dict[str, str | None] = {}
+        self._functions: dict[str, FunctionInfo] = {}
         self._current_return_type: str | None = None
         self._interrupt_handlers: dict[int, str] = {}
         self._interrupt_names: set[str] = set()
         self._labels: dict[str, int] = {}
         self._patches: list[tuple[int, str]] = []
         self._label_count: int = 0
-
-    # --- public API --------------------------------------------------------
 
     def generate(
         self,
@@ -147,11 +162,11 @@ class CodeGen:
             self._emit(Opcode.HALT)
         self._gen(program)
         if require_entry_point:
-            main_label = self._fun_labels.get("main")
-            if main_label is None:
+            main = self._functions.get("main")
+            if main is None:
                 msg = "missing entry point: function 'main' is required"
                 raise CodeGenError(msg)
-            self._patches.append((entry_idx, main_label))
+            self._patches.append((entry_idx, main.label))
         else:
             self._emit(Opcode.HALT)
         self._backpatch()
@@ -161,8 +176,6 @@ class CodeGen:
             data=self._data,
             interrupt_handlers=handlers_resolved,
         )
-
-    # --- emit helpers ------------------------------------------------------
 
     def _emit(self, op: Opcode, operand: int = 0) -> None:
         self._instrs.append(Instruction(op, operand))
@@ -183,8 +196,6 @@ class CodeGen:
             addr = self._labels[label] * INSTR_BYTES
             instr = self._instrs[idx]
             self._instrs[idx] = Instruction(instr.opcode, addr)
-
-    # --- scope / variable helpers ------------------------------------------
 
     def _push_scope(self) -> None:
         self._scopes.append({})
@@ -248,8 +259,6 @@ class CodeGen:
             raise CodeGenError(msg)
         return self._output_devices[self._default_output_name], args
 
-    # --- compile-time evaluation -------------------------------------------
-
     def _static_eval(self, node: object) -> int | None:
         match node:
             case Number(value=v):
@@ -261,61 +270,31 @@ class CodeGen:
                     return self._const_values.get(self._var_addr(name))
                 except CodeGenError:
                     return None
-            case BinaryOp(op=op, left=l, right=r):
-                lv = self._static_eval(l)
-                rv = self._static_eval(r)
-                if lv is None or rv is None:
+            case BinaryOp(op=op, left=left, right=right):
+                lv = self._static_eval(left)
+                rv = self._static_eval(right)
+                fn = _STATIC_BINOPS.get(op)
+                if lv is None or rv is None or fn is None:
                     return None
-                match op:
-                    case Op.PLUS:
-                        return lv + rv
-                    case Op.MINUS:
-                        return lv - rv
-                    case Op.STAR:
-                        return lv * rv
-                    case Op.SLASH:
-                        return lv // rv if rv != 0 else None
-                    case Op.AND:
-                        return lv & rv
-                    case Op.OR:
-                        return lv | rv
-                    case Op.XOR:
-                        return lv ^ rv
-                    case Op.EQUAL:
-                        return int(lv == rv)
-                    case Op.NOT_EQUAL:
-                        return int(lv != rv)
-                    case Op.LESS_THAN:
-                        return int(lv < rv)
-                    case Op.GREATER_THAN:
-                        return int(lv > rv)
-                    case Op.LESS_THAN_OR_EQUAL:
-                        return int(lv <= rv)
-                    case Op.GREATER_THAN_OR_EQUAL:
-                        return int(lv >= rv)
-                    case _:
-                        return None
+                return fn(lv, rv)
             case UnaryOp(op=Op.NOT, operand=e):
                 inner = self._static_eval(e)
                 return None if inner is None else int(inner == 0)
             case _:
                 return None
 
-    def _var_addr(self, name: str) -> int:
+    def _lookup(self, name: str) -> tuple[int, str]:
         for scope in reversed(self._scopes):
             if name in scope:
-                return scope[name][0]
+                return scope[name]
         msg = f"undefined variable: {name!r}"
         raise CodeGenError(msg)
+
+    def _var_addr(self, name: str) -> int:
+        return self._lookup(name)[0]
 
     def _var_type(self, name: str) -> str:
-        for scope in reversed(self._scopes):
-            if name in scope:
-                return scope[name][1]
-        msg = f"undefined variable: {name!r}"
-        raise CodeGenError(msg)
-
-    # --- flag-test helper (condition → flags, stack cleared) ---------------
+        return self._lookup(name)[1]
 
     def _emit_flag_test(self) -> None:
         """After gen(cond): TOS = value. Sets FLAGS = value, clears stack."""
@@ -323,8 +302,6 @@ class CodeGen:
         self._emit(Opcode.CMP)  # FLAGS = value - 0; stack: 0:value
         self._emit(Opcode.DROP)  # stack: value
         self._emit(Opcode.DROP)  # stack: empty
-
-    # --- type inference / coercion ----------------------------------------
 
     def _expr_type(self, node: object) -> str:
         match node:
@@ -345,7 +322,8 @@ class CodeGen:
                     return LONG if LONG in (self._expr_type(left), self._expr_type(right)) else INT
                 return BOOL
             case Call(name=name):
-                return self._fun_return_types.get(name) or INT
+                info = self._functions.get(name)
+                return (info.return_type if info else None) or INT
             case _:
                 return INT
 
@@ -362,7 +340,7 @@ class CodeGen:
                 self._emit_long_literal(sv)
                 return
             if self._gen_value(node) != LONG:
-                self._emit(Opcode.I2L)  # sign-extend int -> long
+                self._emit(Opcode.I2L)
             return
         if self._gen_value(node) == LONG:
             msg = "cannot use a long value where a 32-bit value is required"
@@ -380,8 +358,6 @@ class CodeGen:
             self._emit(Opcode.STORE, addr)  # lo (NOS)
         else:
             self._emit(Opcode.STORE, addr)
-
-    # --- statements --------------------------------------------------------
 
     def _gen(self, node: object) -> None:
         match node:
@@ -437,9 +413,7 @@ class CodeGen:
                     raise CodeGenError(msg)
                 lbl_fun = self._fresh_label()
                 lbl_skip = self._fresh_label()
-                self._fun_labels[name] = lbl_fun
-                self._fun_returns[name] = rt is not None
-                self._fun_return_types[name] = rt
+                self._functions[name] = FunctionInfo(lbl_fun, rt)
                 self._emit_jump(Opcode.JMP, lbl_skip)
                 self._mark_label(lbl_fun)
                 self._push_scope()
@@ -532,9 +506,20 @@ class CodeGen:
             self._emit(op)
         self._emit(Opcode.STORE, addr)
 
-    # --- expressions (leave width(type) cells, return the type) ------------
+    def _gen_value(self, node: object) -> str:
+        """Emit `node`, leaving width(type) cells on the stack, and return its type."""
+        match node:
+            case Number() | Bool() | String() | Ident() | IndexExpr():
+                return self._gen_atom(node)
+            case BinaryOp() | UnaryOp() | PostfixOp():
+                return self._gen_operator(node)
+            case Call() as call:
+                return self._gen_call(call)
+            case _:
+                msg = f"unhandled expression: {node!r}"
+                raise CodeGenError(msg)
 
-    def _gen_value(self, node: object) -> str:  # noqa: PLR0911, PLR0912
+    def _gen_atom(self, node: object) -> str:
         match node:
             case Number(value=v):
                 t = self._expr_type(node)
@@ -558,9 +543,7 @@ class CodeGen:
                 if type_name == LONG:
                     self._emit(Opcode.LOAD, addr)  # lo
                     self._emit(Opcode.LOAD, addr + WORD_BYTES)  # hi
-                    return LONG
-                cv = self._const_values.get(addr)
-                if cv is not None:
+                elif (cv := self._const_values.get(addr)) is not None:
                     self._emit(Opcode.PUSH, cv & 0xFFFFFFFF)
                 else:
                     self._emit(Opcode.LOAD, addr)
@@ -576,6 +559,12 @@ class CodeGen:
                 self._emit(Opcode.LOADI)
                 return INT
 
+            case _:
+                msg = f"unhandled expression: {node!r}"
+                raise CodeGenError(msg)
+
+    def _gen_operator(self, node: object) -> str:
+        match node:
             case BinaryOp(op=op, left=left, right=right) if op in _ARITH_OP:
                 rt = self._expr_type(node)
                 if rt == LONG:
@@ -623,21 +612,13 @@ class CodeGen:
                 self._mark_label(lbl_end)
                 return BOOL
 
-            case UnaryOp(op=Op.INCREMENT, operand=Ident(name=name)):
-                self._gen_incdec(name, Opcode.INC, prefix=True)
-                return self._var_type(name)
-            case UnaryOp(op=Op.DECREMENT, operand=Ident(name=name)):
-                self._gen_incdec(name, Opcode.DEC, prefix=True)
-                return self._var_type(name)
-            case PostfixOp(op=Op.INCREMENT, operand=Ident(name=name)):
-                self._gen_incdec(name, Opcode.INC, prefix=False)
-                return self._var_type(name)
-            case PostfixOp(op=Op.DECREMENT, operand=Ident(name=name)):
-                self._gen_incdec(name, Opcode.DEC, prefix=False)
+            case UnaryOp(op=op, operand=Ident(name=name)) if op in _INCDEC_OP:
+                self._gen_incdec(name, _INCDEC_OP[op], prefix=True)
                 return self._var_type(name)
 
-            case Call() as call:
-                return self._gen_call(call)
+            case PostfixOp(op=op, operand=Ident(name=name)) if op in _INCDEC_OP:
+                self._gen_incdec(name, _INCDEC_OP[op], prefix=False)
+                return self._var_type(name)
 
             case _:
                 msg = f"unhandled expression: {node!r}"
@@ -699,14 +680,14 @@ class CodeGen:
         if name in self._interrupt_names:
             msg = f"interrupt handler '{name}' cannot be called directly"
             raise CodeGenError(msg)
-        lbl = self._fun_labels.get(name)
-        if lbl is None:
+        info = self._functions.get(name)
+        if info is None:
             msg = f"undefined function: {name!r}"
             raise CodeGenError(msg)
         for arg in args:
             self._gen_as(arg, INT)
-        self._emit_jump(Opcode.CALL, lbl)
-        if not self._fun_returns.get(name, False):
+        self._emit_jump(Opcode.CALL, info.label)
+        if info.return_type is None:
             self._emit(Opcode.PUSH, 0)  # dummy for void functions
             return INT
-        return self._fun_return_types.get(name) or INT
+        return info.return_type

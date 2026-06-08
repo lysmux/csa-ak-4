@@ -292,14 +292,13 @@ class Analyzer:
         for i, arg in enumerate(args):
             param = chosen.params[min(i, len(chosen.params) - 1)] if chosen.variadic else chosen.params[i]
             if param in LABELS:
-                continue  # already matched structurally; visiting a device label raises
+                continue
             allowed = param if isinstance(param, frozenset) else {param}
             arg_type = self._visit(arg)
             if arg_type is not None and arg_type not in allowed:
                 self.error(f"argument {i + 1}: invalid type '{arg_type}', expected one of {sorted(allowed)}")
 
     def _select_overload(self, overload: list[Args], args: list[Expr]) -> Args | None:
-        # More specific forms (a leading device label) win over the label-less form.
         for form in sorted(overload, key=lambda f: bool(f.params) and f.params[0] in LABELS, reverse=True):
             if self._overload_matches(form, args):
                 return form
@@ -350,7 +349,7 @@ class Analyzer:
         if actual is None or declared == actual:
             return
         if declared == Type.LONG and actual == Type.INT:
-            return  # implicit widening int -> long
+            return
         self.error(f"type mismatch for {label}: expected '{declared}', got '{actual}'")
 
     def _infer_binary(self, op: str, ltype: Type | None, rtype: Type | None) -> Type | None:

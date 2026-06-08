@@ -20,7 +20,6 @@ class TokenType(StrEnum):
     GREATER_THAN_OR_EQUAL = ">="
     AND = "&&"
     OR = "||"
-    XOR = "^"
 
     # Single char operators
     ASSIGN = "="
@@ -31,6 +30,7 @@ class TokenType(StrEnum):
     MINUS = "-"
     STAR = "*"
     SLASH = "/"
+    XOR = "^"
 
     # Delimiters
     LPAREN = "("
@@ -170,10 +170,7 @@ class Lexer:
         if char == '"':
             return self.scan_string()
 
-        if token := self.scan_operator():
-            return token
-
-        if token := self.scan_delimiter():
+        if token := self.scan_symbol():
             return token
 
         self.error(f"Unexpected character {char!r}")
@@ -220,10 +217,10 @@ class Lexer:
                 self.advance()
                 esc = self.current_char
                 if esc is None:
-                    self.error_at("Unterminated escape in string", line, col)
+                    self.error("Unterminated escape in string", line, col)
                 mapped = self.ESCAPES.get(esc)
                 if mapped is None:
-                    self.error_at(f"Unknown escape sequence '\\{esc}'", esc_line, esc_col)
+                    self.error(f"Unknown escape sequence '\\{esc}'", esc_line, esc_col)
                 chars.append(mapped)
                 self.advance()
                 continue
@@ -232,7 +229,7 @@ class Lexer:
             self.advance()
 
         if self.current_char is None:
-            self.error_at("Unterminated string", line, col)
+            self.error("Unterminated string", line, col)
 
         self.advance()
 
@@ -243,32 +240,24 @@ class Lexer:
             col,
         )
 
-    def scan_operator(self) -> Token | None:
+    def scan_symbol(self) -> Token | None:
         line, col = self.line, self.column
 
         two = self.peek(0, 2)
         if two is not None and two in OPERATORS:
             self.advance()
             self.advance()
-
             return Token(type=OPERATORS[two], value=two, line=line, column=col)
 
-        one = self.peek()
-        if one is not None and one in OPERATORS:
+        one = self.current_char
+        if one is None:
+            return None
+        if one in OPERATORS:
             self.advance()
-
             return Token(type=OPERATORS[one], value=one, line=line, column=col)
-
-        return None
-
-    def scan_delimiter(self) -> Token | None:
-        line, col = self.line, self.column
-
-        char = self.current_char
-        if char is not None and self.current_char in DELIMITERS:
+        if one in DELIMITERS:
             self.advance()
-
-            return Token(type=DELIMITERS[char], value=char, line=line, column=col)
+            return Token(type=DELIMITERS[one], value=one, line=line, column=col)
 
         return None
 
@@ -314,8 +303,9 @@ class Lexer:
 
         self.pos += 1
 
-    def error(self, message: str) -> Never:
-        raise LexerError(message, self.line, self.column)
-
-    def error_at(self, message: str, line: int, column: int) -> Never:
-        raise LexerError(message, line, column)
+    def error(self, message: str, line: int | None = None, column: int | None = None) -> Never:
+        raise LexerError(
+            message,
+            self.line if line is None else line,
+            self.column if column is None else column,
+        )
