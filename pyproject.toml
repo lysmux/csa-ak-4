@@ -6,19 +6,24 @@ authors = [{ name = "lysmux", email = "lysmux <kllraz@yandex.ru>" }]
 requires-python = ">=3.12"
 readme = "README.md"
 dependencies = [
-    "click>=8.4.0",
+    "click>=8.4.1",
+    "mypy>=2.1.0",
+    "pre-commit>=4.6.0",
     "pydantic>=2.13.4",
+    "pytest>=9.0.3",
     "pyyaml>=6.0.3",
+    "ruff>=0.15.16",
+    "types-pyyaml>=6.0.12.20260518",
 ]
 
 [dependency-groups]
 dev = [
-    "mypy>=1.19.1",
-    "pre-commit>=4.5.1",
-    "pytest>=9.0.2",
+    "mypy>=2.1.0",
+    "pre-commit>=4.6.0",
+    "pytest>=9.0.3",
     "pytest-cov>=7.1.0",
-    "ruff>=0.15.7",
-    "types-pyyaml>=6.0.12.20260510",
+    "ruff>=0.15.16",
+    "types-pyyaml>=6.0.12.20260518",
 ]
 
 [tool.ruff]
