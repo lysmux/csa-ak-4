@@ -1,8 +1,9 @@
 from pathlib import Path
 from typing import Self
 
-import yaml
 from pydantic import BaseModel
+
+import yaml
 
 
 class LiteralDumper(yaml.SafeDumper):

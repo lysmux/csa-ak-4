@@ -9,7 +9,7 @@ from app.translator.lexer import Lexer
 from app.translator.nodes import Program
 from app.translator.parser import Parser
 
-from tests.golden.schema import GoldenInput, GoldenSnapshot, GoldenTrace
+from tests.schema import GoldenInput, GoldenSnapshot, GoldenTrace
 
 
 def compile_source(

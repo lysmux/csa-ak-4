@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from tests.golden.helpers import run_and_snapshot
-from tests.golden.schema import GoldenInput
+from tests.helpers import run_and_snapshot
+from tests.schema import GoldenInput
 
 GOLDEN_DIR = Path(__file__).parent / "yaml"
 _yaml_files = sorted(GOLDEN_DIR.glob("*.yaml"))

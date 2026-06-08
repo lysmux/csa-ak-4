@@ -454,15 +454,15 @@ tick:     27 │ state: EXECUTE    │    pc: 0x0046 │    ir: DADD     0x00000
   конфигурация, ожидаемый вывод, AST, машинный код и журнал работы.
 - **Инструменты качества:** `ruff` (линт + формат), `mypy` (строгая типизация) — в CI.
 
-| Алгоритм          | Описание                                       | Файл                                                           |
-|-------------------|------------------------------------------------|----------------------------------------------------------------|
-| `hello`           | Печать "Hello, World!"                         | [hello.yaml](tests/golden/yaml/hello.yaml)                     |
-| `cat`             | Эхо ввода с остановкой по символу `0`          | [cat.yaml](tests/golden/yaml/cat.yaml)                         |
-| `hello_user_name` | Запрос имени и приветствие                     | [hello_user_name.yaml](tests/golden/yaml/hello_user_name.yaml) |
-| `sort`            | Сортировка введённого списка чисел             | [sort.yaml](tests/golden/yaml/sort.yaml)                       |
-| `long_arithmetic` | Арифметика двойной точности (64 бита)          | [long_arithmetic.yaml](tests/golden/yaml/long_arithmetic.yaml) |
-| `palindrome`      | Алгоритм варианта — Largest Palindrome Product | [palindrome.yaml](tests/golden/yaml/palindrome.yaml)           |
-| `algorithms`      | Доп. демо: рекурсия, циклы, `++`               | [algorithms.yaml](tests/golden/yaml/algorithms.yaml)           |
+| Алгоритм          | Описание                                       | Файл                                                    |
+|-------------------|------------------------------------------------|---------------------------------------------------------|
+| `hello`           | Печать "Hello, World!"                         | [hello.yaml](tests/yaml/hello.yaml)                     |
+| `cat`             | Эхо ввода с остановкой по символу `0`          | [cat.yaml](tests/yaml/cat.yaml)                         |
+| `hello_user_name` | Запрос имени и приветствие                     | [hello_user_name.yaml](tests/yaml/hello_user_name.yaml) |
+| `sort`            | Сортировка введённого списка чисел             | [sort.yaml](tests/yaml/sort.yaml)                       |
+| `long_arithmetic` | Арифметика двойной точности (64 бита)          | [long_arithmetic.yaml](tests/yaml/long_arithmetic.yaml) |
+| `palindrome`      | Алгоритм варианта — Largest Palindrome Product | [palindrome.yaml](tests/yaml/palindrome.yaml)           |
+| `algorithms`      | Доп. демо: рекурсия, циклы, `++`               | [algorithms.yaml](tests/yaml/algorithms.yaml)           |
 
 **Пример использования:**
 ```console
