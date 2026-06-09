@@ -357,8 +357,8 @@ PC ← vector_table[N]
 ** `STORE value, addr` добавляет `value` в буфер
 устройства. `print` без метки пишет на устройство `default`.
 Рендеринг буфера:
-* `format: string` — байты как символы;
-* `format: raw` — числа через пробел;
+* `mode: string` — байты как символы;
+* `mode: raw` — числа через пробел;
 
 **Устройства ввода (`Input`):
 ** ввод управляется прерываниями. На каждом такте защёлкивает запланированный байт на порт и, пока байт не прочитан,
@@ -392,7 +392,7 @@ stack_size:              # глубины стеков, в записях
 io:
   outputs:
     default:             # метка устройства
-      format: string     # string | raw
+      mode: string       # string | raw
       address: 0x222     # байтовый MMIO-адрес
       default: true      # устройство для print без метки
   inputs:
@@ -475,6 +475,7 @@ tick:     27 │ state: EXECUTE    │    pc: 0x0046 │    ir: DADD     0x00000
 | `long_arithmetic` | Сложение и вычитание 64-битных чисел           | [long_arithmetic.yaml](tests/yaml/long_arithmetic.yaml) |
 | `palindrome`      | Алгоритм варианта — Largest Palindrome Product | [palindrome.yaml](tests/yaml/palindrome.yaml)           |
 | `algorithms`      | Доп. демо: рекурсия, циклы, `++`               | [algorithms.yaml](tests/yaml/algorithms.yaml)           |
+| `interrupt_overrun` | Потеря ввода: токены приходят чаще, чем работает обработчик — порт перезаписывается | [interrupt_overrun.yaml](tests/yaml/interrupt_overrun.yaml) |
 
 **Пример использования:**
 ```console
@@ -500,5 +501,6 @@ Summary
 | `hello_user_name` | 25  | 117               | 585              | 2738      |
 | `sort`            | 39  | 193               | 965              | 5840      |
 | `long_arithmetic` | 6   | 26                | 130              | 106       |
-| `palindrome`      | 30  | 138               | 690              | 1 126 211 |
+| `palindrome`      | 42  | 193               | 965              | 2 958 718 |
 | `algorithms`      | 25  | 103               | 515              | 1109      |
+| `interrupt_overrun` | 14 | 46               | 230              | 1651      |

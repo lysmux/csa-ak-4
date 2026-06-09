@@ -1,0 +1,448 @@
+name: interrupt_overrun
+source: |-
+  var done: bool = false;
+
+  interrupt 0 on_char() {
+      var c: int = read();
+      if (c == 0) {
+          done = true;
+      } else {
+          print(char_output, c);
+      }
+  }
+
+  fun main() {
+      enable_interrupts();
+      while (!done) {}
+      disable_interrupts();
+  }
+trace_window: 150
+config:
+  limit: 5000
+  memory_size:
+    instruction: 2000
+    data: 1000
+  stack_size:
+    ret: 100
+    data: 100
+  io:
+    outputs:
+      char_output:
+        mode: string
+        address: 546
+        default: true
+    inputs:
+      stdin:
+        address: 547
+        vector: 0
+        schedule:
+        - - 1
+          - h
+        - - 60
+          - e
+        - - 80
+          - l
+        - - 200
+          - l
+        - - 300
+          - o
+        - - 1500
+          - 0
+snapshot:
+  output:
+    char_output: hllo
+  ast: |-
+    Program
+    └─ body:
+       ├─ [0] VarDecl  name='done'  type_name='bool'
+       │  └─ value: Bool  value=False
+       ├─ [1] InterruptDecl  vector=0  name='on_char'
+       │  └─ body: Block
+       │     └─ body:
+       │        ├─ [0] VarDecl  name='c'  type_name='int'
+       │        │  └─ value: Call  name='read'  args=[]
+       │        └─ [1] IfStmt
+       │           ├─ condition: BinaryOp  op=<Op.EQUAL: 'EQUAL'>
+       │           │  ├─ left: Ident  name='c'
+       │           │  └─ right: Number  value=0
+       │           ├─ then_block: Block
+       │           │  └─ body:
+       │           │     └─ [0] AssignStmt  name='done'
+       │           │        └─ value: Bool  value=True
+       │           └─ else_branch: Block
+       │              └─ body:
+       │                 └─ [0] ExprStmt
+       │                    └─ expr: Call  name='print'
+       │                       └─ args:
+       │                          ├─ [0] Ident  name='char_output'
+       │                          └─ [1] Ident  name='c'
+       └─ [2] FunDecl  name='main'  params=[]  return_type='void'
+          └─ body: Block
+             └─ body:
+                ├─ [0] ExprStmt
+                │  └─ expr: Call  name='enable_interrupts'  args=[]
+                ├─ [1] WhileStmt
+                │  ├─ condition: UnaryOp  op=<Op.NOT: 'NOT'>
+                │  │  └─ operand: Ident  name='done'
+                │  └─ body: Block  body=[]
+                └─ [2] ExprStmt
+                   └─ expr: Call  name='disable_interrupts'  args=[]
+  machine_code: |-
+    Instructions:
+      0x0000 - 0x610000008c - CALL 0x0000008c
+      0x0005 - 0x200000000 - HALT 0x00000000
+      0x000a - 0x1000000000 - PUSH 0x00000000
+      0x000f - 0x2100000000 - STORE 0x00000000
+      0x0014 - 0x6000000087 - JMP 0x00000087
+      0x0019 - 0x2000000223 - LOAD 0x00000223
+      0x001e - 0x2100000004 - STORE 0x00000004
+      0x0023 - 0x2000000004 - LOAD 0x00000004
+      0x0028 - 0x1000000000 - PUSH 0x00000000
+      0x002d - 0x3400000000 - CMP 0x00000000
+      0x0032 - 0x1200000000 - DROP 0x00000000
+      0x0037 - 0x1200000000 - DROP 0x00000000
+      0x003c - 0x500000004b - JZ 0x0000004b
+      0x0041 - 0x1000000000 - PUSH 0x00000000
+      0x0046 - 0x6000000050 - JMP 0x00000050
+      0x004b - 0x1000000001 - PUSH 0x00000001
+      0x0050 - 0x1000000000 - PUSH 0x00000000
+      0x0055 - 0x3400000000 - CMP 0x00000000
+      0x005a - 0x1200000000 - DROP 0x00000000
+      0x005f - 0x1200000000 - DROP 0x00000000
+      0x0064 - 0x5000000078 - JZ 0x00000078
+      0x0069 - 0x1000000001 - PUSH 0x00000001
+      0x006e - 0x2100000000 - STORE 0x00000000
+      0x0073 - 0x6000000082 - JMP 0x00000082
+      0x0078 - 0x2000000004 - LOAD 0x00000004
+      0x007d - 0x2100000222 - STORE 0x00000222
+      0x0082 - 0x7200000000 - RTI 0x00000000
+      0x0087 - 0x60000000e6 - JMP 0x000000e6
+      0x008c - 0x7000000000 - EI 0x00000000
+      0x0091 - 0x2000000000 - LOAD 0x00000000
+      0x0096 - 0x1000000000 - PUSH 0x00000000
+      0x009b - 0x3400000000 - CMP 0x00000000
+      0x00a0 - 0x1200000000 - DROP 0x00000000
+      0x00a5 - 0x1200000000 - DROP 0x00000000
+      0x00aa - 0x50000000b9 - JZ 0x000000b9
+      0x00af - 0x1000000000 - PUSH 0x00000000
+      0x00b4 - 0x60000000be - JMP 0x000000be
+      0x00b9 - 0x1000000001 - PUSH 0x00000001
+      0x00be - 0x1000000000 - PUSH 0x00000000
+      0x00c3 - 0x3400000000 - CMP 0x00000000
+      0x00c8 - 0x1200000000 - DROP 0x00000000
+      0x00cd - 0x1200000000 - DROP 0x00000000
+      0x00d2 - 0x50000000dc - JZ 0x000000dc
+      0x00d7 - 0x6000000091 - JMP 0x00000091
+      0x00dc - 0x7100000000 - DI 0x00000000
+      0x00e1 - 0x6200000000 - RET 0x00000000
+
+    Data:
+      0x0000 - 0x00000000
+      0x0004 - 0x00000000
+
+    Interrupt handlers:
+      vector 0 -> 0x0019
+  trace:
+    total_ticks: 1651
+    lines: |2-
+       tick:      1 │ state: FETCH      │    pc: 0x0000 │    ir: HALT     0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:      2 │ state: EXECUTE    │    pc: 0x0005 │    ir: CALL     0x0000008C │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:      3 │ state: START      │    pc: 0x008C │    ir: CALL     0x0000008C │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:      4 │ state: FETCH      │    pc: 0x008C │    ir: CALL     0x0000008C │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:      5 │ state: EXECUTE    │    pc: 0x0091 │    ir: EI       0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:      6 │ state: START      │    pc: 0x0091 │    ir: EI       0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:      7 │ state: FETCH      │    pc: 0x0091 │    ir: EI       0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:      8 │ state: EXECUTE    │    pc: 0x0096 │    ir: LOAD     0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:      9 │ state: EXECUTE    │    pc: 0x0096 │    ir: LOAD     0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     10 │ state: START      │    pc: 0x0096 │    ir: LOAD     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     11 │ state: INTERRUPT  │    pc: 0x0096 │    ir: LOAD     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     12 │ state: INTERRUPT  │    pc: 0x0096 │    ir: LOAD     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     13 │ state: INTERRUPT  │    pc: 0x0096 │    ir: LOAD     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     14 │ state: START      │    pc: 0x0019 │    ir: LOAD     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     15 │ state: FETCH      │    pc: 0x0019 │    ir: LOAD     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     16 │ state: EXECUTE    │    pc: 0x001E │    ir: LOAD     0x00000223 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     17 │ state: EXECUTE    │    pc: 0x001E │    ir: LOAD     0x00000223 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     18 │ state: START      │    pc: 0x001E │    ir: LOAD     0x00000223 │ flags: · · · · │   tos: 0x00000068 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     19 │ state: FETCH      │    pc: 0x001E │    ir: LOAD     0x00000223 │ flags: · · · · │   tos: 0x00000068 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     20 │ state: EXECUTE    │    pc: 0x0023 │    ir: STORE    0x00000004 │ flags: · · · · │   tos: 0x00000068 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     21 │ state: EXECUTE    │    pc: 0x0023 │    ir: STORE    0x00000004 │ flags: · · · · │   tos: 0x00000068 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     22 │ state: EXECUTE    │    pc: 0x0023 │    ir: STORE    0x00000004 │ flags: · · · · │   tos: 0x00000068 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     23 │ state: START      │    pc: 0x0023 │    ir: STORE    0x00000004 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     24 │ state: FETCH      │    pc: 0x0023 │    ir: STORE    0x00000004 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     25 │ state: EXECUTE    │    pc: 0x0028 │    ir: LOAD     0x00000004 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     26 │ state: EXECUTE    │    pc: 0x0028 │    ir: LOAD     0x00000004 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     27 │ state: START      │    pc: 0x0028 │    ir: LOAD     0x00000004 │ flags: · · · · │   tos: 0x00000068 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     28 │ state: FETCH      │    pc: 0x0028 │    ir: LOAD     0x00000004 │ flags: · · · · │   tos: 0x00000068 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     29 │ state: EXECUTE    │    pc: 0x002D │    ir: PUSH     0x00000000 │ flags: · · · · │   tos: 0x00000068 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     30 │ state: START      │    pc: 0x002D │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000068 │  rtos: 0x00000000
+       tick:     31 │ state: FETCH      │    pc: 0x002D │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000068 │  rtos: 0x00000000
+       tick:     32 │ state: EXECUTE    │    pc: 0x0032 │    ir: CMP      0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000068 │  rtos: 0x00000000
+       tick:     33 │ state: START      │    pc: 0x0032 │    ir: CMP      0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000068 │  rtos: 0x00000000
+       tick:     34 │ state: FETCH      │    pc: 0x0032 │    ir: CMP      0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000068 │  rtos: 0x00000000
+       tick:     35 │ state: EXECUTE    │    pc: 0x0037 │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000068 │  rtos: 0x00000000
+       tick:     36 │ state: EXECUTE    │    pc: 0x0037 │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000068 │  rtos: 0x00000000
+       tick:     37 │ state: START      │    pc: 0x0037 │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000068 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     38 │ state: FETCH      │    pc: 0x0037 │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000068 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     39 │ state: EXECUTE    │    pc: 0x003C │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000068 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     40 │ state: EXECUTE    │    pc: 0x003C │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000068 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     41 │ state: START      │    pc: 0x003C │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     42 │ state: FETCH      │    pc: 0x003C │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     43 │ state: EXECUTE    │    pc: 0x0041 │    ir: JZ       0x0000004B │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     44 │ state: START      │    pc: 0x0041 │    ir: JZ       0x0000004B │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     45 │ state: FETCH      │    pc: 0x0041 │    ir: JZ       0x0000004B │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     46 │ state: EXECUTE    │    pc: 0x0046 │    ir: PUSH     0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     47 │ state: START      │    pc: 0x0046 │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     48 │ state: FETCH      │    pc: 0x0046 │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     49 │ state: EXECUTE    │    pc: 0x004B │    ir: JMP      0x00000050 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     50 │ state: START      │    pc: 0x0050 │    ir: JMP      0x00000050 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     51 │ state: FETCH      │    pc: 0x0050 │    ir: JMP      0x00000050 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     52 │ state: EXECUTE    │    pc: 0x0055 │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     53 │ state: START      │    pc: 0x0055 │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     54 │ state: FETCH      │    pc: 0x0055 │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     55 │ state: EXECUTE    │    pc: 0x005A │    ir: CMP      0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     56 │ state: START      │    pc: 0x005A │    ir: CMP      0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     57 │ state: FETCH      │    pc: 0x005A │    ir: CMP      0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     58 │ state: EXECUTE    │    pc: 0x005F │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     59 │ state: EXECUTE    │    pc: 0x005F │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     60 │ state: START      │    pc: 0x005F │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     61 │ state: FETCH      │    pc: 0x005F │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     62 │ state: EXECUTE    │    pc: 0x0064 │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     63 │ state: EXECUTE    │    pc: 0x0064 │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     64 │ state: START      │    pc: 0x0064 │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     65 │ state: FETCH      │    pc: 0x0064 │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     66 │ state: EXECUTE    │    pc: 0x0069 │    ir: JZ       0x00000078 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     67 │ state: START      │    pc: 0x0078 │    ir: JZ       0x00000078 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     68 │ state: FETCH      │    pc: 0x0078 │    ir: JZ       0x00000078 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     69 │ state: EXECUTE    │    pc: 0x007D │    ir: LOAD     0x00000004 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     70 │ state: EXECUTE    │    pc: 0x007D │    ir: LOAD     0x00000004 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     71 │ state: START      │    pc: 0x007D │    ir: LOAD     0x00000004 │ flags: · · · · │   tos: 0x00000068 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     72 │ state: FETCH      │    pc: 0x007D │    ir: LOAD     0x00000004 │ flags: · · · · │   tos: 0x00000068 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     73 │ state: EXECUTE    │    pc: 0x0082 │    ir: STORE    0x00000222 │ flags: · · · · │   tos: 0x00000068 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     74 │ state: EXECUTE    │    pc: 0x0082 │    ir: STORE    0x00000222 │ flags: · · · · │   tos: 0x00000068 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     75 │ state: EXECUTE    │    pc: 0x0082 │    ir: STORE    0x00000222 │ flags: · · · · │   tos: 0x00000068 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     76 │ state: START      │    pc: 0x0082 │    ir: STORE    0x00000222 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     77 │ state: FETCH      │    pc: 0x0082 │    ir: STORE    0x00000222 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     78 │ state: EXECUTE    │    pc: 0x0087 │    ir: RTI      0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     79 │ state: EXECUTE    │    pc: 0x0087 │    ir: RTI      0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000096
+       tick:     80 │ state: EXECUTE    │    pc: 0x0096 │    ir: RTI      0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:     81 │ state: EXECUTE    │    pc: 0x0096 │    ir: RTI      0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:     82 │ state: START      │    pc: 0x0096 │    ir: RTI      0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:     83 │ state: FETCH      │    pc: 0x0096 │    ir: RTI      0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:     84 │ state: EXECUTE    │    pc: 0x009B │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:     85 │ state: START      │    pc: 0x009B │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:     86 │ state: INTERRUPT  │    pc: 0x009B │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:     87 │ state: INTERRUPT  │    pc: 0x009B │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000096
+       tick:     88 │ state: INTERRUPT  │    pc: 0x009B │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     89 │ state: START      │    pc: 0x0019 │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     90 │ state: FETCH      │    pc: 0x0019 │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     91 │ state: EXECUTE    │    pc: 0x001E │    ir: LOAD     0x00000223 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     92 │ state: EXECUTE    │    pc: 0x001E │    ir: LOAD     0x00000223 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     93 │ state: START      │    pc: 0x001E │    ir: LOAD     0x00000223 │ flags: · · · · │   tos: 0x0000006C │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     94 │ state: FETCH      │    pc: 0x001E │    ir: LOAD     0x00000223 │ flags: · · · · │   tos: 0x0000006C │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     95 │ state: EXECUTE    │    pc: 0x0023 │    ir: STORE    0x00000004 │ flags: · · · · │   tos: 0x0000006C │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     96 │ state: EXECUTE    │    pc: 0x0023 │    ir: STORE    0x00000004 │ flags: · · · · │   tos: 0x0000006C │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     97 │ state: EXECUTE    │    pc: 0x0023 │    ir: STORE    0x00000004 │ flags: · · · · │   tos: 0x0000006C │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     98 │ state: START      │    pc: 0x0023 │    ir: STORE    0x00000004 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:     99 │ state: FETCH      │    pc: 0x0023 │    ir: STORE    0x00000004 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    100 │ state: EXECUTE    │    pc: 0x0028 │    ir: LOAD     0x00000004 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    101 │ state: EXECUTE    │    pc: 0x0028 │    ir: LOAD     0x00000004 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    102 │ state: START      │    pc: 0x0028 │    ir: LOAD     0x00000004 │ flags: · · · · │   tos: 0x0000006C │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    103 │ state: FETCH      │    pc: 0x0028 │    ir: LOAD     0x00000004 │ flags: · · · · │   tos: 0x0000006C │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    104 │ state: EXECUTE    │    pc: 0x002D │    ir: PUSH     0x00000000 │ flags: · · · · │   tos: 0x0000006C │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    105 │ state: START      │    pc: 0x002D │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x0000006C │  rtos: 0x00000000
+       tick:    106 │ state: FETCH      │    pc: 0x002D │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x0000006C │  rtos: 0x00000000
+       tick:    107 │ state: EXECUTE    │    pc: 0x0032 │    ir: CMP      0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x0000006C │  rtos: 0x00000000
+       tick:    108 │ state: START      │    pc: 0x0032 │    ir: CMP      0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x0000006C │  rtos: 0x00000000
+       tick:    109 │ state: FETCH      │    pc: 0x0032 │    ir: CMP      0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x0000006C │  rtos: 0x00000000
+       tick:    110 │ state: EXECUTE    │    pc: 0x0037 │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x0000006C │  rtos: 0x00000000
+       tick:    111 │ state: EXECUTE    │    pc: 0x0037 │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x0000006C │  rtos: 0x00000000
+       tick:    112 │ state: START      │    pc: 0x0037 │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x0000006C │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    113 │ state: FETCH      │    pc: 0x0037 │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x0000006C │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    114 │ state: EXECUTE    │    pc: 0x003C │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x0000006C │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    115 │ state: EXECUTE    │    pc: 0x003C │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x0000006C │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    116 │ state: START      │    pc: 0x003C │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    117 │ state: FETCH      │    pc: 0x003C │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    118 │ state: EXECUTE    │    pc: 0x0041 │    ir: JZ       0x0000004B │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    119 │ state: START      │    pc: 0x0041 │    ir: JZ       0x0000004B │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    120 │ state: FETCH      │    pc: 0x0041 │    ir: JZ       0x0000004B │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    121 │ state: EXECUTE    │    pc: 0x0046 │    ir: PUSH     0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    122 │ state: START      │    pc: 0x0046 │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    123 │ state: FETCH      │    pc: 0x0046 │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    124 │ state: EXECUTE    │    pc: 0x004B │    ir: JMP      0x00000050 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    125 │ state: START      │    pc: 0x0050 │    ir: JMP      0x00000050 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    126 │ state: FETCH      │    pc: 0x0050 │    ir: JMP      0x00000050 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    127 │ state: EXECUTE    │    pc: 0x0055 │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    128 │ state: START      │    pc: 0x0055 │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    129 │ state: FETCH      │    pc: 0x0055 │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    130 │ state: EXECUTE    │    pc: 0x005A │    ir: CMP      0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    131 │ state: START      │    pc: 0x005A │    ir: CMP      0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    132 │ state: FETCH      │    pc: 0x005A │    ir: CMP      0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    133 │ state: EXECUTE    │    pc: 0x005F │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    134 │ state: EXECUTE    │    pc: 0x005F │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    135 │ state: START      │    pc: 0x005F │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    136 │ state: FETCH      │    pc: 0x005F │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    137 │ state: EXECUTE    │    pc: 0x0064 │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    138 │ state: EXECUTE    │    pc: 0x0064 │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    139 │ state: START      │    pc: 0x0064 │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    140 │ state: FETCH      │    pc: 0x0064 │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    141 │ state: EXECUTE    │    pc: 0x0069 │    ir: JZ       0x00000078 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    142 │ state: START      │    pc: 0x0078 │    ir: JZ       0x00000078 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    143 │ state: FETCH      │    pc: 0x0078 │    ir: JZ       0x00000078 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    144 │ state: EXECUTE    │    pc: 0x007D │    ir: LOAD     0x00000004 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    145 │ state: EXECUTE    │    pc: 0x007D │    ir: LOAD     0x00000004 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    146 │ state: START      │    pc: 0x007D │    ir: LOAD     0x00000004 │ flags: · · · · │   tos: 0x0000006C │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    147 │ state: FETCH      │    pc: 0x007D │    ir: LOAD     0x00000004 │ flags: · · · · │   tos: 0x0000006C │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    148 │ state: EXECUTE    │    pc: 0x0082 │    ir: STORE    0x00000222 │ flags: · · · · │   tos: 0x0000006C │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    149 │ state: EXECUTE    │    pc: 0x0082 │    ir: STORE    0x00000222 │ flags: · · · · │   tos: 0x0000006C │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:    150 │ state: EXECUTE    │    pc: 0x0082 │    ir: STORE    0x00000222 │ flags: · · · · │   tos: 0x0000006C │   nos: 0x00000000 │  rtos: 0x00000000
+      ... 1351 tick(s) omitted ...
+       tick:   1502 │ state: EXECUTE    │    pc: 0x00AF │    ir: JZ       0x000000B9 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1503 │ state: START      │    pc: 0x00B9 │    ir: JZ       0x000000B9 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1504 │ state: INTERRUPT  │    pc: 0x00B9 │    ir: JZ       0x000000B9 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1505 │ state: INTERRUPT  │    pc: 0x00B9 │    ir: JZ       0x000000B9 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x000000D2
+       tick:   1506 │ state: INTERRUPT  │    pc: 0x00B9 │    ir: JZ       0x000000B9 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1507 │ state: START      │    pc: 0x0019 │    ir: JZ       0x000000B9 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1508 │ state: FETCH      │    pc: 0x0019 │    ir: JZ       0x000000B9 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1509 │ state: EXECUTE    │    pc: 0x001E │    ir: LOAD     0x00000223 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1510 │ state: EXECUTE    │    pc: 0x001E │    ir: LOAD     0x00000223 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1511 │ state: START      │    pc: 0x001E │    ir: LOAD     0x00000223 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1512 │ state: FETCH      │    pc: 0x001E │    ir: LOAD     0x00000223 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1513 │ state: EXECUTE    │    pc: 0x0023 │    ir: STORE    0x00000004 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1514 │ state: EXECUTE    │    pc: 0x0023 │    ir: STORE    0x00000004 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1515 │ state: EXECUTE    │    pc: 0x0023 │    ir: STORE    0x00000004 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1516 │ state: START      │    pc: 0x0023 │    ir: STORE    0x00000004 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1517 │ state: FETCH      │    pc: 0x0023 │    ir: STORE    0x00000004 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1518 │ state: EXECUTE    │    pc: 0x0028 │    ir: LOAD     0x00000004 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1519 │ state: EXECUTE    │    pc: 0x0028 │    ir: LOAD     0x00000004 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1520 │ state: START      │    pc: 0x0028 │    ir: LOAD     0x00000004 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1521 │ state: FETCH      │    pc: 0x0028 │    ir: LOAD     0x00000004 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1522 │ state: EXECUTE    │    pc: 0x002D │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1523 │ state: START      │    pc: 0x002D │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1524 │ state: FETCH      │    pc: 0x002D │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1525 │ state: EXECUTE    │    pc: 0x0032 │    ir: CMP      0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1526 │ state: START      │    pc: 0x0032 │    ir: CMP      0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1527 │ state: FETCH      │    pc: 0x0032 │    ir: CMP      0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1528 │ state: EXECUTE    │    pc: 0x0037 │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1529 │ state: EXECUTE    │    pc: 0x0037 │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1530 │ state: START      │    pc: 0x0037 │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1531 │ state: FETCH      │    pc: 0x0037 │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1532 │ state: EXECUTE    │    pc: 0x003C │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1533 │ state: EXECUTE    │    pc: 0x003C │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1534 │ state: START      │    pc: 0x003C │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1535 │ state: FETCH      │    pc: 0x003C │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1536 │ state: EXECUTE    │    pc: 0x0041 │    ir: JZ       0x0000004B │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1537 │ state: START      │    pc: 0x004B │    ir: JZ       0x0000004B │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1538 │ state: FETCH      │    pc: 0x004B │    ir: JZ       0x0000004B │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1539 │ state: EXECUTE    │    pc: 0x0050 │    ir: PUSH     0x00000001 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1540 │ state: START      │    pc: 0x0050 │    ir: PUSH     0x00000001 │ flags: · · · · │   tos: 0x00000001 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1541 │ state: FETCH      │    pc: 0x0050 │    ir: PUSH     0x00000001 │ flags: · · · · │   tos: 0x00000001 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1542 │ state: EXECUTE    │    pc: 0x0055 │    ir: PUSH     0x00000000 │ flags: · · · · │   tos: 0x00000001 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1543 │ state: START      │    pc: 0x0055 │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000001 │  rtos: 0x00000000
+       tick:   1544 │ state: FETCH      │    pc: 0x0055 │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000001 │  rtos: 0x00000000
+       tick:   1545 │ state: EXECUTE    │    pc: 0x005A │    ir: CMP      0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000001 │  rtos: 0x00000000
+       tick:   1546 │ state: START      │    pc: 0x005A │    ir: CMP      0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000001 │  rtos: 0x00000000
+       tick:   1547 │ state: FETCH      │    pc: 0x005A │    ir: CMP      0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000001 │  rtos: 0x00000000
+       tick:   1548 │ state: EXECUTE    │    pc: 0x005F │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000001 │  rtos: 0x00000000
+       tick:   1549 │ state: EXECUTE    │    pc: 0x005F │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000001 │  rtos: 0x00000000
+       tick:   1550 │ state: START      │    pc: 0x005F │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000001 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1551 │ state: FETCH      │    pc: 0x005F │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000001 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1552 │ state: EXECUTE    │    pc: 0x0064 │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000001 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1553 │ state: EXECUTE    │    pc: 0x0064 │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000001 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1554 │ state: START      │    pc: 0x0064 │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1555 │ state: FETCH      │    pc: 0x0064 │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1556 │ state: EXECUTE    │    pc: 0x0069 │    ir: JZ       0x00000078 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1557 │ state: START      │    pc: 0x0069 │    ir: JZ       0x00000078 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1558 │ state: FETCH      │    pc: 0x0069 │    ir: JZ       0x00000078 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1559 │ state: EXECUTE    │    pc: 0x006E │    ir: PUSH     0x00000001 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1560 │ state: START      │    pc: 0x006E │    ir: PUSH     0x00000001 │ flags: · · · · │   tos: 0x00000001 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1561 │ state: FETCH      │    pc: 0x006E │    ir: PUSH     0x00000001 │ flags: · · · · │   tos: 0x00000001 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1562 │ state: EXECUTE    │    pc: 0x0073 │    ir: STORE    0x00000000 │ flags: · · · · │   tos: 0x00000001 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1563 │ state: EXECUTE    │    pc: 0x0073 │    ir: STORE    0x00000000 │ flags: · · · · │   tos: 0x00000001 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1564 │ state: EXECUTE    │    pc: 0x0073 │    ir: STORE    0x00000000 │ flags: · · · · │   tos: 0x00000001 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1565 │ state: START      │    pc: 0x0073 │    ir: STORE    0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1566 │ state: FETCH      │    pc: 0x0073 │    ir: STORE    0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1567 │ state: EXECUTE    │    pc: 0x0078 │    ir: JMP      0x00000082 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1568 │ state: START      │    pc: 0x0082 │    ir: JMP      0x00000082 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1569 │ state: FETCH      │    pc: 0x0082 │    ir: JMP      0x00000082 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1570 │ state: EXECUTE    │    pc: 0x0087 │    ir: RTI      0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000000
+       tick:   1571 │ state: EXECUTE    │    pc: 0x0087 │    ir: RTI      0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x000000B9
+       tick:   1572 │ state: EXECUTE    │    pc: 0x00B9 │    ir: RTI      0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1573 │ state: EXECUTE    │    pc: 0x00B9 │    ir: RTI      0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1574 │ state: START      │    pc: 0x00B9 │    ir: RTI      0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1575 │ state: FETCH      │    pc: 0x00B9 │    ir: RTI      0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1576 │ state: EXECUTE    │    pc: 0x00BE │    ir: PUSH     0x00000001 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1577 │ state: START      │    pc: 0x00BE │    ir: PUSH     0x00000001 │ flags: · · · · │   tos: 0x00000001 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1578 │ state: FETCH      │    pc: 0x00BE │    ir: PUSH     0x00000001 │ flags: · · · · │   tos: 0x00000001 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1579 │ state: EXECUTE    │    pc: 0x00C3 │    ir: PUSH     0x00000000 │ flags: · · · · │   tos: 0x00000001 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1580 │ state: START      │    pc: 0x00C3 │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000001 │  rtos: 0x00000002
+       tick:   1581 │ state: FETCH      │    pc: 0x00C3 │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000001 │  rtos: 0x00000002
+       tick:   1582 │ state: EXECUTE    │    pc: 0x00C8 │    ir: CMP      0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000001 │  rtos: 0x00000002
+       tick:   1583 │ state: START      │    pc: 0x00C8 │    ir: CMP      0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000001 │  rtos: 0x00000002
+       tick:   1584 │ state: FETCH      │    pc: 0x00C8 │    ir: CMP      0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000001 │  rtos: 0x00000002
+       tick:   1585 │ state: EXECUTE    │    pc: 0x00CD │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000001 │  rtos: 0x00000002
+       tick:   1586 │ state: EXECUTE    │    pc: 0x00CD │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000001 │  rtos: 0x00000002
+       tick:   1587 │ state: START      │    pc: 0x00CD │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000001 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1588 │ state: FETCH      │    pc: 0x00CD │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000001 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1589 │ state: EXECUTE    │    pc: 0x00D2 │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000001 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1590 │ state: EXECUTE    │    pc: 0x00D2 │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000001 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1591 │ state: START      │    pc: 0x00D2 │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1592 │ state: FETCH      │    pc: 0x00D2 │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1593 │ state: EXECUTE    │    pc: 0x00D7 │    ir: JZ       0x000000DC │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1594 │ state: START      │    pc: 0x00D7 │    ir: JZ       0x000000DC │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1595 │ state: FETCH      │    pc: 0x00D7 │    ir: JZ       0x000000DC │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1596 │ state: EXECUTE    │    pc: 0x00DC │    ir: JMP      0x00000091 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1597 │ state: START      │    pc: 0x0091 │    ir: JMP      0x00000091 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1598 │ state: FETCH      │    pc: 0x0091 │    ir: JMP      0x00000091 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1599 │ state: EXECUTE    │    pc: 0x0096 │    ir: LOAD     0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1600 │ state: EXECUTE    │    pc: 0x0096 │    ir: LOAD     0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1601 │ state: START      │    pc: 0x0096 │    ir: LOAD     0x00000000 │ flags: · · · · │   tos: 0x00000001 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1602 │ state: FETCH      │    pc: 0x0096 │    ir: LOAD     0x00000000 │ flags: · · · · │   tos: 0x00000001 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1603 │ state: EXECUTE    │    pc: 0x009B │    ir: PUSH     0x00000000 │ flags: · · · · │   tos: 0x00000001 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1604 │ state: START      │    pc: 0x009B │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000001 │  rtos: 0x00000002
+       tick:   1605 │ state: FETCH      │    pc: 0x009B │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000001 │  rtos: 0x00000002
+       tick:   1606 │ state: EXECUTE    │    pc: 0x00A0 │    ir: CMP      0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000001 │  rtos: 0x00000002
+       tick:   1607 │ state: START      │    pc: 0x00A0 │    ir: CMP      0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000001 │  rtos: 0x00000002
+       tick:   1608 │ state: FETCH      │    pc: 0x00A0 │    ir: CMP      0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000001 │  rtos: 0x00000002
+       tick:   1609 │ state: EXECUTE    │    pc: 0x00A5 │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000001 │  rtos: 0x00000002
+       tick:   1610 │ state: EXECUTE    │    pc: 0x00A5 │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000001 │  rtos: 0x00000002
+       tick:   1611 │ state: START      │    pc: 0x00A5 │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000001 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1612 │ state: FETCH      │    pc: 0x00A5 │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000001 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1613 │ state: EXECUTE    │    pc: 0x00AA │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000001 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1614 │ state: EXECUTE    │    pc: 0x00AA │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000001 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1615 │ state: START      │    pc: 0x00AA │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1616 │ state: FETCH      │    pc: 0x00AA │    ir: DROP     0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1617 │ state: EXECUTE    │    pc: 0x00AF │    ir: JZ       0x000000B9 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1618 │ state: START      │    pc: 0x00AF │    ir: JZ       0x000000B9 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1619 │ state: FETCH      │    pc: 0x00AF │    ir: JZ       0x000000B9 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1620 │ state: EXECUTE    │    pc: 0x00B4 │    ir: PUSH     0x00000000 │ flags: · · · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1621 │ state: START      │    pc: 0x00B4 │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1622 │ state: FETCH      │    pc: 0x00B4 │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1623 │ state: EXECUTE    │    pc: 0x00B9 │    ir: JMP      0x000000BE │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1624 │ state: START      │    pc: 0x00BE │    ir: JMP      0x000000BE │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1625 │ state: FETCH      │    pc: 0x00BE │    ir: JMP      0x000000BE │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1626 │ state: EXECUTE    │    pc: 0x00C3 │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1627 │ state: START      │    pc: 0x00C3 │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1628 │ state: FETCH      │    pc: 0x00C3 │    ir: PUSH     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1629 │ state: EXECUTE    │    pc: 0x00C8 │    ir: CMP      0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1630 │ state: START      │    pc: 0x00C8 │    ir: CMP      0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1631 │ state: FETCH      │    pc: 0x00C8 │    ir: CMP      0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1632 │ state: EXECUTE    │    pc: 0x00CD │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1633 │ state: EXECUTE    │    pc: 0x00CD │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1634 │ state: START      │    pc: 0x00CD │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1635 │ state: FETCH      │    pc: 0x00CD │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1636 │ state: EXECUTE    │    pc: 0x00D2 │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1637 │ state: EXECUTE    │    pc: 0x00D2 │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1638 │ state: START      │    pc: 0x00D2 │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1639 │ state: FETCH      │    pc: 0x00D2 │    ir: DROP     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1640 │ state: EXECUTE    │    pc: 0x00D7 │    ir: JZ       0x000000DC │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1641 │ state: START      │    pc: 0x00DC │    ir: JZ       0x000000DC │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1642 │ state: FETCH      │    pc: 0x00DC │    ir: JZ       0x000000DC │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1643 │ state: EXECUTE    │    pc: 0x00E1 │    ir: DI       0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1644 │ state: START      │    pc: 0x00E1 │    ir: DI       0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1645 │ state: FETCH      │    pc: 0x00E1 │    ir: DI       0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1646 │ state: EXECUTE    │    pc: 0x00E6 │    ir: RET      0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000002
+       tick:   1647 │ state: EXECUTE    │    pc: 0x00E6 │    ir: RET      0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000005
+       tick:   1648 │ state: START      │    pc: 0x0005 │    ir: RET      0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000005
+       tick:   1649 │ state: FETCH      │    pc: 0x0005 │    ir: RET      0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000005
+       tick:   1650 │ state: EXECUTE    │    pc: 0x000A │    ir: HALT     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000005
+       tick:   1651 │ state: HALT       │    pc: 0x000A │    ir: HALT     0x00000000 │ flags: · Z · · │   tos: 0x00000000 │   nos: 0x00000000 │  rtos: 0x00000005
