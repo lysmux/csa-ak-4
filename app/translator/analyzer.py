@@ -37,6 +37,10 @@ ARITH_OPS = {Op.PLUS, Op.MINUS, Op.STAR, Op.SLASH}
 CMP_OPS = {Op.EQUAL, Op.NOT_EQUAL, Op.LESS_THAN, Op.GREATER_THAN, Op.LESS_THAN_OR_EQUAL, Op.GREATER_THAN_OR_EQUAL}
 LOGIC_OPS = {Op.AND, Op.OR, Op.XOR}
 INCR_OPS = {Op.INCREMENT, Op.DECREMENT}
+UNSUPPORTED_LONG_ARITHMETIC = {
+    Op.STAR: "64-bit multiplication is not supported",
+    Op.SLASH: "64-bit division is not supported",
+}
 
 
 @dataclass
@@ -325,12 +329,14 @@ class Analyzer:
             return
         self.error(f"type mismatch for {label}: expected '{declared}', got '{actual}'")
 
-    def _infer_binary(self, op: str, ltype: Type | None, rtype: Type | None) -> Type | None:
+    def _infer_binary(self, op: Op, ltype: Type | None, rtype: Type | None) -> Type | None:
         if op in ARITH_OPS:
             for t, side in ((ltype, "left"), (rtype, "right")):
                 if t is not None and t not in NUMERIC:
                     self.error(f"'{op}' requires numeric operands, got '{t}' on {side}")
             if Type.LONG in (ltype, rtype):
+                if op in UNSUPPORTED_LONG_ARITHMETIC:
+                    self.error(UNSUPPORTED_LONG_ARITHMETIC[op])
                 return Type.LONG
             return ltype or rtype
 

@@ -56,8 +56,6 @@ _ARITH_OP: dict[Op, Opcode] = {
 _DARITH_OP: dict[Op, Opcode] = {
     Op.PLUS: Opcode.DADD,
     Op.MINUS: Opcode.DSUB,
-    Op.STAR: Opcode.DMUL,
-    Op.SLASH: Opcode.DDIV,
 }
 
 _INCDEC_OP: dict[Op, Opcode] = {

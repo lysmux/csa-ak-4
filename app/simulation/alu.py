@@ -1,10 +1,7 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from app.isa.consts import (
-    DWORD_WIDTH,
-    WORD_WIDTH,
-)
+from app.isa.consts import WORD_WIDTH
 from app.isa.flag import Flag
 from app.isa.opcode import Opcode
 
@@ -61,7 +58,6 @@ class NumberFormat:
 
 
 WORD = NumberFormat(WORD_WIDTH)
-DWORD = NumberFormat(DWORD_WIDTH)
 
 
 def _trunc_div(a: int, b: int) -> int:
@@ -71,30 +67,6 @@ def _trunc_div(a: int, b: int) -> int:
         quotient += 1
 
     return quotient
-
-
-def dword_mul(a: int, b: int) -> AluResult:
-    signed_product = DWORD.signed(a) * DWORD.signed(b)
-    value = DWORD.normalize(signed_product)
-    flags = DWORD.nz_flags(value)
-
-    if DWORD.is_signed_overflow(signed_product):
-        flags |= Flag.V | Flag.C
-
-    return AluResult(value, flags)
-
-
-def dword_div(a: int, b: int) -> AluResult:
-    left = DWORD.signed(a)
-    right = DWORD.signed(b)
-
-    value = DWORD.normalize(_trunc_div(left, right))
-    flags = DWORD.nz_flags(value)
-
-    if left == DWORD.min_signed and right == -1:
-        flags |= Flag.V
-
-    return AluResult(value, flags)
 
 
 class Alu:

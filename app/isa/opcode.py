@@ -31,8 +31,6 @@ class Opcode(IntEnum):
     ADDC = 0x38
     DADD = 0x39
     DSUB = 0x3A
-    DMUL = 0x3B
-    DDIV = 0x3C
     I2L = 0x3D
 
     # Логические операции

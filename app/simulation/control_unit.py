@@ -1,12 +1,11 @@
 from dataclasses import dataclass
 from typing import Never
 
-from app.isa.consts import INSTR_BYTES, WORD_MASK, WORD_WIDTH
+from app.isa.consts import INSTR_BYTES
 from app.isa.flag import Flag
 from app.isa.instruction import Instruction
 from app.isa.opcode import BRANCH_OPCODES, ONE_CYCLE_OPCODES, Opcode
 from app.isa.state import State
-from app.simulation.alu import dword_div, dword_mul
 from app.simulation.data_path import DataPath
 from app.simulation.memory import Memory
 from app.simulation.mux import ARMux, DSPMux, NosMux, PCMux, RSPMux, RStackMux, TosMux
@@ -175,10 +174,6 @@ class ControlUnit:
                 self._execute_dadd()
             case Opcode.DSUB:
                 self._execute_dsub()
-            case Opcode.DMUL:
-                self._execute_dmul()
-            case Opcode.DDIV:
-                self._execute_ddiv()
             case Opcode.DROP:
                 self._execute_drop()
             case Opcode.RET:
@@ -467,55 +462,6 @@ class ControlUnit:
                 self.complete_instruction()
             case _:
                 self._invalid_step()
-
-    def _execute_dmul(self) -> None:
-        match self._step:
-            case 0:
-                self._alu_l_buff = self.data_path.stack.tos
-                self._alu_r_buff = self.data_path.stack.nos
-
-                self.data_path.stack.latch_sp(DSPMux.DEC)
-                self.advance_step()
-            case 1:
-                self.data_path.pop()
-                self.data_path.stack.latch_sp(DSPMux.DEC)
-                self.advance_step()
-            case 2:
-                self.data_path.pop()
-                a = (self.data_path.stack.tos << WORD_WIDTH) | self.data_path.stack.nos
-                b = (self._alu_l_buff << WORD_WIDTH) | self._alu_r_buff
-                result = dword_mul(a, b)
-                self._write_dword(result.value, result.flags)
-                self.complete_instruction()
-            case _:
-                self._invalid_step()
-
-    def _execute_ddiv(self) -> None:
-        match self._step:
-            case 0:
-                self._alu_l_buff = self.data_path.stack.tos
-                self._alu_r_buff = self.data_path.stack.nos
-
-                self.data_path.stack.latch_sp(DSPMux.DEC)
-                self.advance_step()
-            case 1:
-                self.data_path.pop()
-                self.data_path.stack.latch_sp(DSPMux.DEC)
-                self.advance_step()
-            case 2:
-                self.data_path.pop()
-                a = (self.data_path.stack.tos << WORD_WIDTH) | self.data_path.stack.nos
-                b = (self._alu_l_buff << WORD_WIDTH) | self._alu_r_buff
-                result = dword_div(a, b)
-                self._write_dword(result.value, result.flags)
-                self.complete_instruction()
-            case _:
-                self._invalid_step()
-
-    def _write_dword(self, value: int, flags: Flag) -> None:
-        self.data_path.stack.tos = (value >> WORD_WIDTH) & WORD_MASK
-        self.data_path.stack.nos = value & WORD_MASK
-        self.data_path.flags = flags
 
     def execute_branch(self, condition: bool) -> None:
         if condition:
