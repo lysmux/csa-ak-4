@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Never
 
-from app.translator.builtins import BUILTINS, LABELS, Args, Param
+from app.translator.builtins import BUILTINS, Args
 from app.translator.nodes import (
     ArrayDecl,
     AssignStmt,
@@ -104,11 +104,15 @@ class Analyzer:
         if existing is not None:
             self.error(f"'{sym.name}' already declared in this scope")
 
-    def _resolve(self, name: str) -> Symbol | None:
+    def _resolve(self, name: str) -> Symbol:
         sym = self._scope.resolve(name)
         if sym is None:
             self.error(f"undefined name '{name}'")
         return sym
+
+    @property
+    def in_interrupt_handler(self) -> bool:
+        return self._in_interrupt_handler
 
     def error(self, message: str) -> Never:
         raise SemanticError(message)
@@ -136,7 +140,7 @@ class Analyzer:
 
             case IndexAssignStmt(name=name, index=index, value=value):
                 sym = self._resolve(name)
-                if sym is not None and sym.type_name != Type.ARRAY:
+                if sym.type_name != Type.ARRAY:
                     self.error(f"'{name}' is not an array")
                 self._visit(index)
                 self._visit(value)
@@ -165,11 +169,10 @@ class Analyzer:
 
             case AssignStmt(name=name, value=value):
                 sym = self._resolve(name)
-                if sym is not None and not sym.mutable:
+                if not sym.mutable:
                     self.error(f"cannot assign to const '{name}'")
                 vtype = self._visit(value)
-                if sym is not None:
-                    self._check_compat(sym.type_name, vtype, f"'{name}'")
+                self._check_compat(sym.type_name, vtype, f"'{name}'")
 
             case IfStmt(condition=cond, then_block=then_block, else_branch=else_branch):
                 if cond is not None:
@@ -219,12 +222,11 @@ class Analyzer:
                     if not isinstance(operand, Ident):
                         self.error(f"'{op}' requires an identifier as operand")
                     sym = self._resolve(operand.name)
-                    if sym is not None:
-                        if not sym.mutable:
-                            self.error(f"cannot apply '{op}' to const '{operand.name}'")
-                        if sym.type_name not in NUMERIC:
-                            self.error(f"'{op}' requires a numeric variable, got '{sym.type_name}'")
-                    return sym.type_name if sym else None
+                    if not sym.mutable:
+                        self.error(f"cannot apply '{op}' to const '{operand.name}'")
+                    if sym.type_name not in NUMERIC:
+                        self.error(f"'{op}' requires a numeric variable, got '{sym.type_name}'")
+                    return sym.type_name
                 otype = self._visit(operand)
                 if op == Op.NOT:
                     if otype is not None and otype != Type.BOOL:
@@ -236,43 +238,39 @@ class Analyzer:
                 if not isinstance(operand, Ident):
                     self.error(f"'{op}' requires an identifier as operand")
                 sym = self._resolve(operand.name)
-                if sym is not None:
-                    if not sym.mutable:
-                        self.error(f"cannot apply '{op}' to const '{operand.name}'")
-                    if sym.type_name not in NUMERIC:
-                        self.error(f"'{op}' requires a numeric variable, got '{sym.type_name}'")
-                return sym.type_name if sym else None
+                if not sym.mutable:
+                    self.error(f"cannot apply '{op}' to const '{operand.name}'")
+                if sym.type_name not in NUMERIC:
+                    self.error(f"'{op}' requires a numeric variable, got '{sym.type_name}'")
+                return sym.type_name
 
             case Call(name=name, args=args):
                 builtin = BUILTINS.get(name)
                 if builtin is None:
                     return self._check_user_call(name, args)
-                if name == "read":
-                    self._check_read(builtin.overload, args)
-                else:
-                    self._check_overload(name, builtin.overload, args)
+                self._check_call(name, builtin.overload, args)
+                if builtin.check is not None:
+                    builtin.check(self, args)
                 return builtin.return_type
 
             case IndexExpr(name=name, index=index):
                 sym = self._resolve(name)
-                if sym is not None and sym.type_name != Type.ARRAY:
+                if sym.type_name != Type.ARRAY:
                     self.error(f"'{name}' is not an array")
                 self._visit(index)
                 return Type.INT
 
             case Ident(name=name):
                 sym = self._resolve(name)
-                if sym is not None:
-                    match sym.type_name:
-                        case Type.OUTPUT_DEVICE:
-                            self.error(f"output device label '{name}' can only appear as first arg of print")
-                        case Type.INPUT_DEVICE:
-                            self.error(f"input device label '{name}' can only appear as arg of read")
-                        case Type.ARRAY:
-                            self.error(f"array '{name}' must be indexed with []")
-                        case _:
-                            return sym.type_name
-                return None
+                match sym.type_name:
+                    case Type.OUTPUT_DEVICE:
+                        self.error(f"output device label '{name}' can only appear as first arg of print")
+                    case Type.INPUT_DEVICE:
+                        self.error(f"input device label '{name}' can only appear as arg of read")
+                    case Type.ARRAY:
+                        self.error(f"array '{name}' must be indexed with []")
+                    case _:
+                        return sym.type_name
 
             case Number():
                 return Type.INT
@@ -285,65 +283,40 @@ class Analyzer:
 
         return None
 
-    def _check_overload(self, name: str, overload: list[Args], args: list[Expr]) -> None:
-        chosen = self._select_overload(overload, args)
-        if chosen is None:
-            self.error(f"'{name}' got {len(args)} argument(s); no matching overload")
-        for i, arg in enumerate(args):
-            param = chosen.params[min(i, len(chosen.params) - 1)] if chosen.variadic else chosen.params[i]
-            if param in LABELS:
-                continue
-            allowed = param if isinstance(param, frozenset) else {param}
-            arg_type = self._visit(arg)
-            if arg_type is not None and arg_type not in allowed:
-                self.error(f"argument {i + 1}: invalid type '{arg_type}', expected one of {sorted(allowed)}")
+    def _check_call(self, name: str, overload: list[Args], args: list[Expr]) -> None:
+        types = [self._arg_type(arg) for arg in args]
+        if not any(self._form_matches(form, types) for form in overload):
+            self.error(f"'{name}': no matching overload for {len(args)} argument(s)")
 
-    def _select_overload(self, overload: list[Args], args: list[Expr]) -> Args | None:
-        for form in sorted(overload, key=lambda f: bool(f.params) and f.params[0] in LABELS, reverse=True):
-            if self._overload_matches(form, args):
-                return form
-        return None
-
-    def _overload_matches(self, form: Args, args: list[Expr]) -> bool:
+    def _form_matches(self, form: Args, types: list[Type | None]) -> bool:
         if form.variadic:
-            if len(args) < len(form.params) - 1:
+            if len(types) < len(form.params) - 1:
                 return False
-        elif len(args) != len(form.params):
+        elif len(types) != len(form.params):
             return False
-        return all(
-            self._is_device_label(arg, param) for param, arg in zip(form.params, args, strict=False) if param in LABELS
-        )
+        for i, arg_type in enumerate(types):
+            param = form.params[min(i, len(form.params) - 1)] if form.variadic else form.params[i]
+            allowed = param if isinstance(param, frozenset) else {param}
+            if arg_type is not None and arg_type not in allowed:
+                return False
+        return True
 
-    def _is_device_label(self, arg: Expr, device: Param) -> bool:
-        if not isinstance(arg, Ident):
-            return False
-        sym = self._scope.resolve(arg.name)
-        return sym is not None and sym.type_name == device
-
-    def _check_read(self, overload: list[Args], args: list[Expr]) -> None:
-        label = next(p for form in overload for p in form.params if p in LABELS)
-        if not args:
-            if not self._in_interrupt_handler:
-                self.error("read() without a label can only be used in an interrupt handler")
-        elif len(args) == 1 and self._is_device_label(args[0], label):
-            return
-        elif len(args) == 1 and isinstance(args[0], Ident):
-            self.error(f"'{args[0].name}' is not an input device label")
-        else:
-            self.error("read expects 0 or 1 device-label arg")
+    def _arg_type(self, arg: Expr) -> Type | None:
+        if isinstance(arg, Ident):
+            return self._resolve(arg.name).type_name
+        return self._visit(arg)
 
     def _check_user_call(self, name: str, args: list[Expr]) -> Type | None:
         sym = self._resolve(name)
-        if sym is not None:
-            if sym.type_name == Type.INTERRUPT:
-                self.error(f"interrupt handler '{name}' cannot be called directly")
-            elif sym.type_name != Type.FUN:
-                self.error(f"'{name}' is not a function")
-            elif sym.params is not None and len(args) != len(sym.params):
-                self.error(f"'{name}' expects {len(sym.params)} arg(s), got {len(args)}")
+        if sym.type_name == Type.INTERRUPT:
+            self.error(f"interrupt handler '{name}' cannot be called directly")
+        elif sym.type_name != Type.FUN:
+            self.error(f"'{name}' is not a function")
+        elif sym.params is not None and len(args) != len(sym.params):
+            self.error(f"'{name}' expects {len(sym.params)} arg(s), got {len(args)}")
         for arg in args:
             self._visit(arg)
-        return sym.return_type if sym else None
+        return sym.return_type
 
     def _check_compat(self, declared: Type, actual: Type | None, label: str) -> None:
         if actual is None or declared == actual:
