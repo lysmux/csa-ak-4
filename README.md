@@ -449,9 +449,11 @@ tick:     27 │ state: EXECUTE    │    pc: 0x0046 │    ir: DADD     0x00000
 ```
 
 ### Схема
-Совмещённая схема DataPath и ControlUnit:
+#### DataPath
+![DataPath](docs/scheme/data_path.png)
 
-![Scheme](docs/scheme/scheme.png)
+#### ControlUnit
+![CU](docs/scheme/cu.png)
 
 ### Особенности моделирования
 
@@ -470,7 +472,7 @@ tick:     27 │ state: EXECUTE    │    pc: 0x0046 │    ir: DADD     0x00000
 | `cat`             | Эхо ввода с остановкой по символу `0`          | [cat.yaml](tests/yaml/cat.yaml)                         |
 | `hello_user_name` | Запрос имени и приветствие                     | [hello_user_name.yaml](tests/yaml/hello_user_name.yaml) |
 | `sort`            | Сортировка введённого списка чисел             | [sort.yaml](tests/yaml/sort.yaml)                       |
-| `long_arithmetic` | Сложение и вычитание 64-битных чисел          | [long_arithmetic.yaml](tests/yaml/long_arithmetic.yaml) |
+| `long_arithmetic` | Сложение и вычитание 64-битных чисел           | [long_arithmetic.yaml](tests/yaml/long_arithmetic.yaml) |
 | `palindrome`      | Алгоритм варианта — Largest Palindrome Product | [palindrome.yaml](tests/yaml/palindrome.yaml)           |
 | `algorithms`      | Доп. демо: рекурсия, циклы, `++`               | [algorithms.yaml](tests/yaml/algorithms.yaml)           |
 
