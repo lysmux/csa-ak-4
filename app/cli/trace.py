@@ -4,7 +4,7 @@ from app.isa.flag import Flag
 from app.simulation.control_unit import ControlUnit
 
 
-def format_flags(flags: Flag) -> str:
+def format_flags(flags: Flag, *, styled: bool = False) -> str:
     items = [
         ("N", Flag.N),
         ("Z", Flag.Z),
@@ -12,35 +12,42 @@ def format_flags(flags: Flag) -> str:
         ("C", Flag.C),
     ]
 
+    if not styled:
+        return " ".join(ch if bit in flags else "·" for ch, bit in items)
+
     return " ".join(
         click.style(ch, fg="yellow", bold=True) if bit in flags else click.style("·", dim=True) for ch, bit in items
     )
 
 
-def trace_var(name: str, value: str, *, color: str = "white") -> str:
+def trace_var(name: str, value: str, *, color: str = "white", styled: bool = False) -> str:
+    if not styled:
+        return f"{name:>5}: {value}"
+
     name = click.style(f"{name:>5}", bold=True, fg="cyan")
     value = click.style(value, fg=color)
 
     return f"{name}: {value}"
 
 
-def trace_line(cu: ControlUnit) -> str:
-    s = cu.snapshot
-    instr = s.instruction
+def trace_line(cu: ControlUnit, *, styled: bool = False) -> str:
+    snap = cu.snapshot
+    instr = snap.instruction
 
     parts = [
-        trace_var("tick", f"{s.tick:6d}", color="green"),
-        trace_var("state", f"{s.state.name:<10}", color="magenta"),
-        trace_var("pc", f"0x{s.pc:04X}", color="yellow"),
+        trace_var("tick", f"{snap.tick:6d}", color="green", styled=styled),
+        trace_var("state", f"{snap.state.name:<10}", color="magenta", styled=styled),
+        trace_var("pc", f"0x{snap.pc:04X}", color="yellow", styled=styled),
         trace_var(
             "ir",
             f"{instr.opcode.name:<8} 0x{instr.operand:08X}",
             color="white",
+            styled=styled,
         ),
-        trace_var("flags", format_flags(s.flags)),
-        trace_var("tos", f"0x{s.tos:08X}", color="green"),
-        trace_var("nos", f"0x{s.nos:08X}", color="green"),
-        trace_var("rtos", f"0x{s.r_tos:08X}", color="green"),
+        trace_var("flags", format_flags(snap.flags), styled=styled),
+        trace_var("tos", f"0x{snap.tos:08X}", color="green", styled=styled),
+        trace_var("nos", f"0x{snap.nos:08X}", color="green", styled=styled),
+        trace_var("rtos", f"0x{snap.r_tos:08X}", color="green", styled=styled),
     ]
 
     return " │ ".join(parts)

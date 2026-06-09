@@ -1,6 +1,6 @@
 from app.config import Config
 from app.utils import YamlBaseModel
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class GoldenTrace(BaseModel):
@@ -18,7 +18,7 @@ class GoldenSnapshot(YamlBaseModel):
 class GoldenInput(YamlBaseModel):
     name: str
     source: str
-    max_trace: int = 60
+    trace_window: int = Field(default=100, gt=0)
     config: Config
 
     snapshot: GoldenSnapshot | None = None
