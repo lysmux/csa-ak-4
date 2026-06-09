@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from app.translator.codegen import CodeGen
     from app.translator.nodes import Expr
 
-type Emit = Callable[[CodeGen, Sequence[Expr]], str]
+type Emit = Callable[[CodeGen, Sequence[Expr]], Type]
 type Check = Callable[[Analyzer, Sequence[Expr]], None]
 
 
@@ -29,7 +29,7 @@ class Args:
 @dataclass(frozen=True)
 class Builtin:
     overload: list[Args]
-    return_type: Type | None
+    return_type: Type
     emit: Emit
     check: Check | None = None
 
@@ -45,7 +45,7 @@ BUILTINS: dict[str, Builtin] = {
             Args((PRINTABLE,), variadic=True),  # print(value, ...)
             Args((Type.OUTPUT_DEVICE, PRINTABLE), variadic=True),  # print(out_label, value, ...)
         ],
-        return_type=None,
+        return_type=Type.VOID,
         emit=lambda cg, args: cg.gen_print(args),
     ),
     "read": Builtin(
@@ -57,6 +57,10 @@ BUILTINS: dict[str, Builtin] = {
         emit=lambda cg, args: cg.gen_read(args),
         check=_read_requires_interrupt_context,
     ),
-    "enable_interrupts": Builtin(overload=[Args()], return_type=None, emit=lambda cg, _: cg.gen_enable_interrupts()),
-    "disable_interrupts": Builtin(overload=[Args()], return_type=None, emit=lambda cg, _: cg.gen_disable_interrupts()),
+    "enable_interrupts": Builtin(
+        overload=[Args()], return_type=Type.VOID, emit=lambda cg, _: cg.gen_enable_interrupts()
+    ),
+    "disable_interrupts": Builtin(
+        overload=[Args()], return_type=Type.VOID, emit=lambda cg, _: cg.gen_disable_interrupts()
+    ),
 }

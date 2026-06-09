@@ -1,5 +1,7 @@
 import dataclasses
 
+from app.translator.types import Type
+
 
 def render(node: object) -> str:
     lines: list[str] = []
@@ -7,21 +9,31 @@ def render(node: object) -> str:
     return "\n".join(lines)
 
 
+def _fmt(value: object) -> str:
+    if isinstance(value, Type):
+        return repr(value.value)
+    if isinstance(value, tuple):
+        return "(" + ", ".join(_fmt(item) for item in value) + ")"
+    return repr(value)
+
+
 def _collect(node: object, prefix: str, child_prefix: str, lines: list[str]) -> None:
     if not dataclasses.is_dataclass(node) or isinstance(node, type):
-        lines.append(prefix + repr(node))
+        lines.append(prefix + _fmt(node))
         return
 
     scalars: list[tuple[str, object]] = []
     children: list[tuple[str, object]] = []
     for f in dataclasses.fields(node):
+        if f.metadata.get("ast_skip"):
+            continue
         v = getattr(node, f.name)
         if (isinstance(v, list) and v) or (dataclasses.is_dataclass(v) and not isinstance(v, type)):
             children.append((f.name, v))
         else:
             scalars.append((f.name, v))
 
-    scalar_str = "  ".join(f"{k}={v!r}" for k, v in scalars)
+    scalar_str = "  ".join(f"{k}={_fmt(v)}" for k, v in scalars)
     header = type(node).__name__ + ("  " + scalar_str if scalar_str else "")
     lines.append(prefix + header)
 

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 
 from app.translator.ast_repr import render
+from app.translator.types import Type
 
 
 class Op(StrEnum):
@@ -27,6 +28,8 @@ class Op(StrEnum):
 
 @dataclass
 class ASTNode:
+    inferred_type: Type | None = field(default=None, compare=False, kw_only=True, metadata={"ast_skip": True})
+
     def __str__(self) -> str:
         return render(self)
 
@@ -39,30 +42,30 @@ class Program(ASTNode):
 @dataclass
 class ConstDecl(ASTNode):
     name: str
-    type_name: str
+    type_name: Type
     value: Expr
 
 
 @dataclass
 class VarDecl(ASTNode):
     name: str
-    type_name: str
+    type_name: Type
     value: Expr
 
 
 @dataclass
 class ArrayDecl(ASTNode):
     name: str
-    type_name: str
+    type_name: Type
     size: int
 
 
 @dataclass
 class FunDecl(ASTNode):
     name: str
-    params: list[tuple[str, str]]
+    params: list[tuple[Type, str]]
     body: Block
-    return_type: str | None = None
+    return_type: Type = Type.VOID
 
 
 @dataclass

@@ -26,6 +26,7 @@ from app.translator.nodes import (
     VarDecl,
     WhileStmt,
 )
+from app.translator.types import Type
 
 INFIX_BP: dict[TokenType, int] = {
     TokenType.OR: 1,
@@ -128,7 +129,7 @@ class Parser:
         self.eat(TokenType.CONST)
         name = self.eat(TokenType.IDENT).value
         self.eat(TokenType.COLON)
-        type_name = self.eat(TokenType.TYPE).value
+        type_name = Type(self.eat(TokenType.TYPE).value)
         self.eat(TokenType.ASSIGN)
         value = self.parse_expr()
         self.eat(TokenType.SEMICOLON)
@@ -138,7 +139,7 @@ class Parser:
         self.eat(TokenType.VAR)
         name = self.eat(TokenType.IDENT).value
         self.eat(TokenType.COLON)
-        type_name = self.eat(TokenType.TYPE).value
+        type_name = Type(self.eat(TokenType.TYPE).value)
 
         if self.peek_type() is TokenType.LBRACKET:
             self.advance()
@@ -176,20 +177,20 @@ class Parser:
         params = self.parse_param_list()
         self.eat(TokenType.RPAREN)
 
-        return_type: str | None = None
+        return_type = Type.VOID
         if self.peek_type() is TokenType.COLON:
             self.advance()
-            return_type = self.eat(TokenType.TYPE).value
+            return_type = Type(self.eat(TokenType.TYPE).value)
         body = self.parse_block()
         return FunDecl(name=name, params=params, body=body, return_type=return_type)
 
-    def parse_param_list(self) -> list[tuple[str, str]]:
-        params: list[tuple[str, str]] = []
+    def parse_param_list(self) -> list[tuple[Type, str]]:
+        params: list[tuple[Type, str]] = []
         if self.peek_type() == TokenType.RPAREN:
             return params
 
         while True:
-            type_name = self.eat(TokenType.TYPE).value
+            type_name = Type(self.eat(TokenType.TYPE).value)
             param_name = self.eat(TokenType.IDENT).value
             params.append((type_name, param_name))
 

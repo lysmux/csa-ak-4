@@ -79,7 +79,7 @@ class Analyzer:
         input_devices: set[str] | None = None,
     ) -> None:
         self._scope = Scope()
-        self._return_type: Type | None = None
+        self._return_type: Type = Type.VOID
         self._in_interrupt_handler = False
 
         for label in output_devices or set():
@@ -118,22 +118,24 @@ class Analyzer:
         raise SemanticError(message)
 
     def _visit(self, node: ASTNode) -> Type | None:
+        node.inferred_type = self._infer(node)
+        return node.inferred_type
+
+    def _infer(self, node: ASTNode) -> Type | None:
         match node:
             case Program(body=body):
                 for stmt in body:
                     self._visit(stmt)
 
             case ConstDecl(name=name, type_name=t, value=value):
-                t_type = Type(t)
                 vtype = self._visit(value)
-                self._check_compat(t_type, vtype, f"const '{name}'")
-                self._define(Symbol(name, t_type, mutable=False))
+                self._check_compat(t, vtype, f"const '{name}'")
+                self._define(Symbol(name, t, mutable=False))
 
             case VarDecl(name=name, type_name=t, value=value):
-                t_type = Type(t)
                 vtype = self._visit(value)
-                self._check_compat(t_type, vtype, f"var '{name}'")
-                self._define(Symbol(name, t_type, mutable=True))
+                self._check_compat(t, vtype, f"var '{name}'")
+                self._define(Symbol(name, t, mutable=True))
 
             case ArrayDecl(name=name, type_name=_, size=_):
                 self._define(Symbol(name, Type.ARRAY, mutable=True))
@@ -146,14 +148,12 @@ class Analyzer:
                 self._visit(value)
 
             case FunDecl(name=name, params=params, body=body, return_type=rt):
-                rt_type = Type(rt) if rt else None
-                params_typed = [(Type(tn), pn) for tn, pn in params]
-                self._define(Symbol(name, Type.FUN, mutable=False, params=params_typed, return_type=rt_type))
+                self._define(Symbol(name, Type.FUN, mutable=False, params=params, return_type=rt))
                 self._push()
                 for type_name, param_name in params:
-                    self._define(Symbol(param_name, Type(type_name), mutable=True))
+                    self._define(Symbol(param_name, type_name, mutable=True))
                 prev = self._return_type
-                self._return_type = rt_type
+                self._return_type = rt
                 self._visit(body)
                 self._return_type = prev
                 self._pop()
@@ -205,12 +205,11 @@ class Analyzer:
                 if self._in_interrupt_handler:
                     self.error("cannot return from an interrupt handler")
                 vtype = self._visit(value) if value is not None else None
-                if self._return_type is None:
+                if self._return_type == Type.VOID:
                     if vtype is not None:
                         self.error("cannot return a value from a void function")
-                else:
-                    if value is not None:
-                        self._check_compat(self._return_type, vtype, "return value")
+                elif value is not None:
+                    self._check_compat(self._return_type, vtype, "return value")
 
             case BinaryOp(op=op, left=left, right=right):
                 ltype = self._visit(left)
@@ -272,8 +271,8 @@ class Analyzer:
                     case _:
                         return sym.type_name
 
-            case Number():
-                return Type.INT
+            case Number(value=v):
+                return Type.LONG if not (-(1 << 31) <= v <= (1 << 32) - 1) else Type.INT
 
             case String():
                 return Type.STRING
@@ -303,7 +302,8 @@ class Analyzer:
 
     def _arg_type(self, arg: Expr) -> Type | None:
         if isinstance(arg, Ident):
-            return self._resolve(arg.name).type_name
+            arg.inferred_type = self._resolve(arg.name).type_name
+            return arg.inferred_type
         return self._visit(arg)
 
     def _check_user_call(self, name: str, args: list[Expr]) -> Type | None:

@@ -5,6 +5,7 @@ class Type(StrEnum):
     INT = "int"
     LONG = "long"
     BOOL = "bool"
+    VOID = "void"
     STRING = "string"
     ARRAY = "array"
     FUN = "fun"
