@@ -48,7 +48,7 @@ class ControlUnit:
 
         self._vector_table: dict[int, int] = vector_table or {}
 
-        self._state = State.START
+        self._state = State.FETCH
         self._step = 0
         self._tick = 0
 
@@ -93,29 +93,32 @@ class ControlUnit:
     def tick(self) -> None:
         self._tick += 1
 
+        self._irq = False
+        self._pending_vector = None
+        for dev in self.data_path.io_map.values():
+            vec = dev.tick(self._tick)
+            if vec is not None:
+                self._pending_vector = vec
+                self._irq = True
+                break
+
         match self._state:
-            case State.START:
-                self.decode_start_signals()
             case State.FETCH:
                 self.decode_fetch_signals()
             case State.INTERRUPT:
                 self.decode_interrupt_signals()
             case State.EXECUTE:
                 self.decode_execute_signals()
+            case State.CHECK_IRQ:
+                self.decode_check_irq_signals()
             case State.HALT:
                 return
 
-    def decode_start_signals(self) -> None:
+    def decode_check_irq_signals(self) -> None:
         if self._irq:
             self.apply_state(State.INTERRUPT)
         else:
             self.apply_state(State.FETCH)
-            for dev in self.data_path.io_map.values():
-                vec = dev.tick(self._tick)
-                if vec is not None and self._ie:
-                    self._pending_vector = vec
-                    self._irq = True
-                    break
 
     def decode_fetch_signals(self) -> None:
         self._ir = self.instr_memory.read(self._pc)
@@ -128,7 +131,6 @@ class ControlUnit:
         match self._step:
             case 0:
                 self._ie = False
-                self._irq = False
                 self.write_r_stack(RStackMux.FLAGS)
                 self.advance_step()
             case 1:
@@ -136,8 +138,7 @@ class ControlUnit:
                 self.advance_step()
             case 2:
                 self.latch_pc(PCMux.VECTOR)
-                self._pending_vector = None
-                self.apply_state(State.START)
+                self.apply_state(State.FETCH)
             case _:
                 self._invalid_step()
 
@@ -540,7 +541,10 @@ class ControlUnit:
         self._step += 1
 
     def complete_instruction(self) -> None:
-        self.apply_state(State.START)
+        if self._ie:
+            self.apply_state(State.CHECK_IRQ)
+        else:
+            self.apply_state(State.FETCH)
 
     def _invalid_step(self) -> Never:
         msg = f"Invalid {self._state.name} step {self._step} for {self._instr.opcode.name}"
