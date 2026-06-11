@@ -87,6 +87,8 @@ class DataPath:
                 value = self.stack.tos
             case NosMux.D_STACK:
                 value = self.stack.read()
+            case NosMux.ALU:
+                value = self.alu_out
         self.stack.nos = value
 
     def push(self, mux: TosMux) -> None:

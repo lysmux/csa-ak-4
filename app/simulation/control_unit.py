@@ -408,21 +408,23 @@ class ControlUnit:
                 self.advance_step()
             case 2:
                 self.data_path.pop()
-                self.data_path.stack.nos = self.data_path.perform_alu(
+                self.data_path.perform_alu(
                     opcode=Opcode.ADD,
                     left=self.data_path.stack.nos,
                     right=self._alu_r_buff,
                 )
+                self.data_path.latch_nos(NosMux.ALU)
                 self.advance_step()
             case 3:
                 carry_in = int(self.data_path.flags.has(Flag.C))
                 rlo = self.data_path.stack.nos
-                self.data_path.stack.tos = self.data_path.perform_alu(
+                self.data_path.perform_alu(
                     opcode=Opcode.ADD,
                     left=self.data_path.stack.tos,
                     right=self._alu_l_buff,
                     carry_in=carry_in,
                 )
+                self.data_path.latch_tos(TosMux.ALU)
                 if rlo != 0:
                     self.data_path.flags = self.data_path.flags & ~Flag.Z
                 self.complete_instruction()
@@ -443,21 +445,23 @@ class ControlUnit:
                 self.advance_step()
             case 2:
                 self.data_path.pop()
-                self.data_path.stack.nos = self.data_path.perform_alu(
+                self.data_path.perform_alu(
                     opcode=Opcode.SUB,
                     left=self.data_path.stack.nos,
                     right=self._alu_r_buff,
                 )
+                self.data_path.latch_nos(NosMux.ALU)
                 self.advance_step()
             case 3:
                 borrow = int(self.data_path.flags.has(Flag.C))
                 rlo = self.data_path.stack.nos
-                self.data_path.stack.tos = self.data_path.perform_alu(
+                self.data_path.perform_alu(
                     opcode=Opcode.SUB,
                     left=self.data_path.stack.tos,
                     right=self._alu_l_buff,
                     carry_in=-borrow,
                 )
+                self.data_path.latch_tos(TosMux.ALU)
                 if rlo != 0:
                     self.data_path.flags = self.data_path.flags & ~Flag.Z
                 self.complete_instruction()

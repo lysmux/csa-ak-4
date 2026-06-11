@@ -30,6 +30,7 @@ class TosMux(IntEnum):
 
 class NosMux(IntEnum):
     TOS = auto()
+    ALU = auto()
     D_STACK = auto()
 
 
