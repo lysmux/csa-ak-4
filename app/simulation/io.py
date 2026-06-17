@@ -36,16 +36,16 @@ class Input(Device):
         normalized = [(t, ord(v) if isinstance(v, str) else v) for t, v in schedule]
         self._schedule: list[tuple[int, int]] = sorted(normalized, key=lambda p: p[0])
         self._vector = vector
-        self._port: int | None = None
+        self._port = 0
+        self._ready = False
 
     def tick(self, current_tick: int) -> int | None:
         while self._schedule and self._schedule[0][0] <= current_tick:
             _, value = self._schedule.pop(0)
             self._port = value
-        return self._vector if self._port is not None else None
+            self._ready = True
+        return self._vector if self._ready else None
 
     def read(self) -> int:
-        if self._port is None:
-            return 0
-        value, self._port = self._port, None
-        return value
+        self._ready = False
+        return self._port
