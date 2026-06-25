@@ -52,7 +52,7 @@ alg | stack | harv | hw | tick | binary | trap | mem | cstr | prob1 | superscala
 
 ## Язык программирования
 
-**Cube** — статически типизированный язык с C/JavaScript-подобным синтаксисом.
+**Cube** — статически типизированный язык с Kotlin/JavaScript-подобным синтаксисом.
 Исполнение начинается с функции `main`. Примеры — в каталоге [examples](examples)
 
 ```cube
@@ -170,7 +170,7 @@ comment        ::= "//" { любой символ, кроме перевода �
 | ...    : тело функции 1 (JMP-skip)  |    | переменные                          |
 | ...    : тело обработчика прерывания|    | массивы (N слов)                    |
 | ...    : тело main                  |    | ...                                 |
-+-------------------------------------+    | 0x0222 : MMIO-устройства (high)     |
++-------------------------------------+    | 0x0222 : MMIO-устройства            |
                                            +-------------------------------------+
 ```
 
@@ -366,7 +366,7 @@ PC ← vector_table[N]
 **Устройства ввода (`Input`):
 ** ввод управляется прерываниями. На каждом такте защёлкивает запланированный байт на порт и, пока байт не прочитан,
 удерживает запрос прерывания (`vector`). `read()` (через `LOAD addr`) возвращает байт
-и сбрасывает порт; чтение пустого порта даёт `0`.
+и снимает запрос прерывания; сам порт сохраняет последнее защёлкнутое значение.
 
 > При `trap`-вводе слишком частые токены относительно длительности обработчика приводят
 > к перезаписи порта
@@ -469,15 +469,15 @@ tick:     27 │ state: EXECUTE    │    pc: 0x0046 │    ir: DADD     0x00000
   конфигурация, ожидаемый вывод, AST, машинный код и журнал работы.
 - **Инструменты качества:** `ruff` (линт + формат), `mypy` (строгая типизация) — в CI.
 
-| Алгоритм          | Описание                                       | Файл                                                    |
-|-------------------|------------------------------------------------|---------------------------------------------------------|
-| `hello`           | Печать "Hello, World!"                         | [hello.yaml](tests/yaml/hello.yaml)                     |
-| `cat`             | Эхо ввода с остановкой по символу `0`          | [cat.yaml](tests/yaml/cat.yaml)                         |
-| `hello_user_name` | Запрос имени и приветствие                     | [hello_user_name.yaml](tests/yaml/hello_user_name.yaml) |
-| `sort`            | Сортировка введённого списка чисел             | [sort.yaml](tests/yaml/sort.yaml)                       |
-| `long_arithmetic` | Сложение и вычитание 64-битных чисел           | [long_arithmetic.yaml](tests/yaml/long_arithmetic.yaml) |
-| `palindrome`      | Алгоритм варианта — Largest Palindrome Product | [palindrome.yaml](tests/yaml/palindrome.yaml)           |
-| `algorithms`      | Доп. демо: рекурсия, циклы, `++`               | [algorithms.yaml](tests/yaml/algorithms.yaml)           |
+| Алгоритм            | Описание                                                                            | Файл                                                        |
+|---------------------|-------------------------------------------------------------------------------------|-------------------------------------------------------------|
+| `hello`             | Печать "Hello, World!"                                                              | [hello.yaml](tests/yaml/hello.yaml)                         |
+| `cat`               | Эхо ввода с остановкой по символу `0`                                               | [cat.yaml](tests/yaml/cat.yaml)                             |
+| `hello_user_name`   | Запрос имени и приветствие                                                          | [hello_user_name.yaml](tests/yaml/hello_user_name.yaml)     |
+| `sort`              | Сортировка введённого списка чисел                                                  | [sort.yaml](tests/yaml/sort.yaml)                           |
+| `long_arithmetic`   | Сложение и вычитание 64-битных чисел                                                | [long_arithmetic.yaml](tests/yaml/long_arithmetic.yaml)     |
+| `palindrome`        | Алгоритм варианта — Largest Palindrome Product                                      | [palindrome.yaml](tests/yaml/palindrome.yaml)               |
+| `algorithms`        | Доп. демо: рекурсия, циклы, `++`                                                    | [algorithms.yaml](tests/yaml/algorithms.yaml)               |
 | `interrupt_overrun` | Потеря ввода: токены приходят чаще, чем работает обработчик — порт перезаписывается | [interrupt_overrun.yaml](tests/yaml/interrupt_overrun.yaml) |
 
 **Пример использования:**

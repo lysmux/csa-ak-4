@@ -1,8 +1,3 @@
-// Project Euler Problem 4: Largest Palindrome Product
-// The largest palindrome made from the product of two 3-digit numbers is
-// 906609 = 913 * 993. Brute force search across all pairs (i, j) with
-// i <= j, keeping the largest palindromic product.
-
 fun reverse(int n): int {
     var rev: int = 0;
     while (n > 0) {
